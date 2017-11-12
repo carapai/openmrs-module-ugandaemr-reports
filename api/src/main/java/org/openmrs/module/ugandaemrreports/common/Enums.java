@@ -15,7 +15,9 @@ public class Enums {
 
     public static enum PeriodInterval {
         BEFORE,
+        ON_BEFORE,
         AFTER,
+        ON_AFTER,
         ON;
 
         PeriodInterval() {
