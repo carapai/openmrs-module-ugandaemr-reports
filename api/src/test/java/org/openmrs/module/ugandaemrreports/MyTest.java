@@ -72,7 +72,7 @@ public class MyTest {
         String encounterQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter, "concept = 'encounter'");
         String inhQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter, "concept IN('99604','99605')", "grouped_by = 1");
         String artStartQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "concept = '99161'", "grouped_by = 2", "yq <= " + quarter);
-        String sectionBConcepts = joinQuery(Enums.UgandaEMRJoiner.AND, "concept IN('death','99071','99072','99603','99160','90206','90306','99165','90211','5240','90209','99132','99084','99085','5497','730')", "yq <= " + quarter);
+        String sectionBConcepts = joinQuery(Enums.UgandaEMRJoiner.AND, "concept IN('5096','death','99071','99072','99603','99160','90206','90306','99165','90211','5240','90209','99132','99084','99085','5497','730')", "yq <= " + quarter);
 
         List<SummarizedObs> encounters = getSummarizedObs(connection, encounterQuery);
         List<SummarizedObs> conceptsThisQuarter = getSummarizedObs(connection, "yq = " + quarter);
@@ -172,20 +172,24 @@ public class MyTest {
         Map<String, Long> cpt = summarize(intersection(cptThisQuarter, artRegimen), get106, zeros106);
 
 
-        Map<String, Object> data1 = get106B(q1, artStart, encounters, one06B, endDate);
-        Map<String, Object> data2 = get106B(q2, artStart, encounters, one06B, endDate);
-        Map<String, Object> data3 = get106B(q3, artStart, encounters, one06B, endDate);
-        Map<String, Object> data4 = get106B(q4, artStart, encounters, one06B, endDate);
-        Map<String, Object> data5 = get106B(q5, artStart, encounters, one06B, endDate);
-        Map<String, Object> data6 = get106B(q6, artStart, encounters, one06B, endDate);
-        Map<String, Object> data7 = get106B(q7, artStart, encounters, one06B, endDate);
+        Map<Integer, List<Data>> pregnantWomen = groupByPerson(filterAndReduce(one06B, hasConcepts("99072", "99603"), hasAnswers("90003")));
+        Map<Integer, List<Data>> baselineCD4 = groupByPerson(filterAndReduce(one06B, hasConcepts("99071"), afterAge(4)));
+        Map<Integer, List<Data>> ti = groupByPerson(filterAndReduce(one06B, hasConcepts("99160", "90206")));
+        Map<Integer, List<Data>> to = groupByPerson(filterAndReduce(one06B, hasConcepts("90306", "99165", "90211")));
+        Map<Integer, List<Data>> stopped = groupByPerson(filterAndReduce(one06B, and(hasConcepts("99084"), hasGroup(2))));
+        Map<Integer, List<Data>> restarted = groupByPerson(filterAndReduce(one06B, and(hasConcepts("99085"), hasGroup(2))));
+        Map<Integer, List<Data>> dead = groupByPerson(filterAndReduce(one06B, hasConcepts("death")));
+        List<SummarizedObs> cd4 = filter(one06B, hasConcepts("5497", "730"));
+        List<SummarizedObs> visits = filter(one06B, and(hasConcepts("5096"), hasGroup(1)));
+        List<SummarizedObs> encounterEncounters = filter(encounters, hasEncounterType("15"));
 
-
-        System.out.println(groupByPerson(startedArtOnOrB4Q).size());
-        System.out.println(groupByPerson(encounterInTheQ).size());
-        System.out.println(groupByPerson(subtract(encounterInTheQ, startedArtOnOrB4Q)).size());
-
-
+        Map<String, Object> data1 = get106B(q1, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
+        Map<String, Object> data2 = get106B(q2, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
+        Map<String, Object> data3 = get106B(q3, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
+        Map<String, Object> data4 = get106B(q4, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
+        Map<String, Object> data5 = get106B(q5, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
+        Map<String, Object> data6 = get106B(q6, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
+        Map<String, Object> data7 = get106B(q7, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
     }
 
     @Test

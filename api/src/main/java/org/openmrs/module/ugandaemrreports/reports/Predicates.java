@@ -120,6 +120,10 @@ public class Predicates {
         return p -> Arrays.asList(encounters).contains(p.getEncounterId());
     }
 
+    public static Predicate<Data> hasPatient(Collection patients) {
+        return p -> Arrays.asList(patients).contains(p.getPatientId());
+    }
+
     public static Predicate<Data> hasEncounter(Collection<Integer> encounters) {
         return p -> encounters.contains(p.getEncounterId());
     }

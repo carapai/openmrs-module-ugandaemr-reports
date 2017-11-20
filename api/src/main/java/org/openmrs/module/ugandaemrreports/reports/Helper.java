@@ -65,6 +65,10 @@ public class Helper {
         return column + " IN(" + values + ")";
     }
 
+    public static String constructSQLInQuery(String column, Integer... values) {
+        return column + " IN(" + Joiner.on(",").join(values) + ")";
+    }
+
     public static String joinQuery(String query1, String query2, Enums.UgandaEMRJoiner joiner) {
         return query1 + " " + joiner.toString() + " " + query2;
     }
@@ -933,7 +937,20 @@ public class Helper {
     }
 
 
-    public static Map<String, Object> get106B(List<LocalDate> localDates, List<SummarizedObs> artStart, List<SummarizedObs> encounters, List<SummarizedObs> one06B, LocalDate end) {
+    public static Map<String, Object> get106B(
+            List<LocalDate> localDates,
+            List<SummarizedObs> artStart,
+            Map<Integer, List<Data>> pregnantWomen,
+            Map<Integer, List<Data>> baselineCD4,
+            Map<Integer, List<Data>> ti,
+            Map<Integer, List<Data>> to,
+            Map<Integer, List<Data>> stopped,
+            Map<Integer, List<Data>> restarted,
+            Map<Integer, List<Data>> dead,
+            List<SummarizedObs> availableCd4,
+            List<SummarizedObs> visits,
+            List<SummarizedObs> encounterEncounters,
+            LocalDate end) throws SQLException {
 
         Integer quarter = getQuarter(localDates);
         Integer currentQuarter = getQuarter(end);
@@ -943,17 +960,8 @@ public class Helper {
         Map<String, Object> data = new HashMap<>();
 
         Map<Integer, List<Data>> startedArt = groupByPerson(filterAndReduce(artStart, inTheQ(quarter)));
-        Map<Integer, List<Data>> pregnant = intersection(startedArt, groupByPerson(filterAndReduce(one06B, hasConcepts("99072", "99603"), hasAnswers("90003"))));
-
-        Map<Integer, List<Data>> baselineCD4 = groupByPerson(filterAndReduce(one06B, hasConcepts("99071"), afterAge(4)));
-        Map<Integer, List<Data>> ti = groupByPerson(filterAndReduce(one06B, hasConcepts("99160", "90206")));
-        Map<Integer, List<Data>> to = groupByPerson(filterAndReduce(one06B, hasConcepts("90306", "99165", "90211")));
-        Map<Integer, List<Data>> stopped = groupByPerson(filterAndReduce(one06B, and(hasConcepts("99084"), hasGroup(2))));
-        Map<Integer, List<Data>> restarted = groupByPerson(filterAndReduce(one06B, and(hasConcepts("99085"), hasGroup(2))));
-        Map<Integer, List<Data>> dead = groupByPerson(filterAndReduce(one06B, hasConcepts("death")));
-        Map<Integer, List<Data>> cd4 = groupByPerson(filterAndReduce(one06B, and(hasConcepts("5497", "730"), onOrAfterQ(quarter), onOrBe4Q(currentQuarter))));
-        Map<Integer, List<Data>> encountersAfter = groupByPerson(filterAndReduce(encounters, and(hasEncounterType("15"), onOrAfterQ(quarter), onOrBe4Q(currentQuarter))));
-
+        Map<Integer, List<Data>> pregnant = intersection(startedArt, pregnantWomen);
+        Map<Integer, List<Data>> cd4 = groupByPerson(filterAndReduce(availableCd4, and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter))));
 
         Map<Integer, List<Data>> withBaseline = intersection(baselineCD4, startedArt);
         Map<Integer, List<Data>> transferIns = intersection(startedArt, ti);
@@ -976,13 +984,20 @@ public class Helper {
         Map<Integer, List<Data>> artStopped = intersection(stopped, currentCohort);
         Map<Integer, List<Data>> artRestarted = intersection(restarted, currentCohort);
         Map<Integer, List<Data>> artDead = intersection(dead, currentCohort);
-        Map<Integer, List<Data>> artEncounters = intersection(encountersAfter, currentCohort);
 
+        Map<Integer, List<Data>> encountersAfter = groupByPerson(filterAndReduce(encounterEncounters,
+                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohort)));
+        Map<Integer, List<Data>> visitsAfter = groupByPerson(filterAndReduce(visits,
+                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohort)));
 
         Map<Integer, List<Data>> artStoppedPregnant = intersection(stopped, currentCohortPregnant);
         Map<Integer, List<Data>> artRestartedPregnant = intersection(restarted, currentCohortPregnant);
         Map<Integer, List<Data>> artDeadPregnant = intersection(dead, currentCohortPregnant);
-        Map<Integer, List<Data>> artEncountersPregnant = intersection(encountersAfter, currentCohortPregnant);
+
+        Map<Integer, List<Data>> artEncountersAfterPregnant = groupByPerson(filterAndReduce(encounterEncounters,
+                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohortPregnant)));
+        Map<Integer, List<Data>> visitsAfterPregnant = groupByPerson(filterAndReduce(visits,
+                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohortPregnant)));
 
 
         double[] cd4Data = new double[baseCD4.size()];
@@ -1010,8 +1025,11 @@ public class Helper {
             cd4DataPregnant[k++] = Double.valueOf(dt.getValue());
         }
 
-        for (Map.Entry<Integer, List<Data>> e : artEncounters.entrySet()) {
-            Data x = e.getValue().stream().max(Comparator.comparing(Data::getEncounterId)).get();
+
+        /*for (Object e : currentCohort) {
+            Data maxVisit = encountersAfter.get(e).stream().max(Comparator.comparing(Data::getValue)).get();
+            Data maxEncounter = visitsAfter.get(e).stream().max(Comparator.comparing(Data::getEncounterId)).get();
+
             LocalDate start = StubDate.dateOf(x.getValue());
             int days = Days.daysBetween(start, end).getDays();
 
@@ -1034,7 +1052,7 @@ public class Helper {
                 lost2FollowupPregnant.add(e.getKey());
             }
 
-        }
+        }*/
 
         Collection allStopped = CollectionUtils.subtract(artStopped.keySet(), artRestarted.keySet());
         Collection allStoppedPregnant = CollectionUtils.subtract(artStoppedPregnant.keySet(), artRestartedPregnant.keySet());
