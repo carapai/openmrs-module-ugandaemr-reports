@@ -534,16 +534,32 @@ public class Helper {
     public static int createObsSummaryTable(Connection connection) throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS obs_summary (\n" +
                 "  encounter_type CHAR(20) NULL,\n" +
-                "  concept        CHAR(10) NULL,\n" +
+                "  concept        INT(10) NULL,\n" +
+                "  val            TEXT,\n" +
                 "  y              INT(4)   NULL,\n" +
                 "  m              INT(1)   NULL,\n" +
                 "  q              INT(1)   NULL,\n" +
                 "  ym             INT(6)   NULL,\n" +
                 "  yq             INT(6)   NULL,\n" +
-                "  vals           LONGTEXT NULL,\n" +
-                "  grouped_by     INT(1) DEFAULT 1,\n" +
-                "  total          INT(8)   NULL\n" +
-                ")";
+                "  age_gender     LONGTEXT,\n" +
+                "  total          INT(5)\n" +
+                ");";
+
+        return executeQuery(sql, connection);
+    }
+
+    public static int createEncounterSummaryTable(Connection connection) throws SQLException {
+        String sql = "CREATE TABLE IF NOT EXISTS encounter_summary (\n" +
+                "  encounter_type CHAR(20) NULL,\n" +
+                "  y              INT(4)   NULL,\n" +
+                "  m              INT(1)   NULL,\n" +
+                "  q              INT(1)   NULL,\n" +
+                "  ym             INT(6)   NULL,\n" +
+                "  yq             INT(6)   NULL,\n" +
+                "  age_gender     LONGTEXT,\n" +
+                "  obs            LONGTEXT,\n" +
+                "  total          INT(5)\n" +
+                ");";
 
         return executeQuery(sql, connection);
     }
@@ -579,7 +595,8 @@ public class Helper {
 
     public static void summarizeObs(Connection connection, String date) throws SQLException {
         createObsSummaryTable(connection);
-        executeQuery("SET @@group_concat_max_len = 1000000;", connection);
+        createEncounterSummaryTable(connection);
+        executeQuery("SET @@group_concat_max_len = 10000000;", connection);
         executeQuery(otherQuery(date), connection);
         executeQuery(valueDatetimeQuery(date), connection);
         executeQuery(encounterSummaryQuery(date), connection);
@@ -612,120 +629,114 @@ public class Helper {
 
 
     public static String encounterSummaryQuery(String date) {
-        return "INSERT INTO obs_summary (encounter_type, concept, y, m, q, ym, yq, vals, grouped_by, total)\n" +
+        return "INSERT INTO encounter_summary (encounter_type, y, m, q, ym, yq, age_gender, obs, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
-                "            WHERE et.encounter_type_id = e.encounter_type), 'ANY') AS encounter_type,\n" +
-                "    'encounter'                                                    AS concept,\n" +
-                "    YEAR(\n" +
-                "        e.encounter_datetime)                                      AS y,\n" +
-                "    MONTH(\n" +
-                "        e.encounter_datetime)                                      AS m,\n" +
-                "    QUARTER(\n" +
-                "        e.encounter_datetime)                                      AS q,\n" +
-                "    concat(YEAR(encounter_datetime), MONTH(\n" +
-                "        encounter_datetime))                                       AS ym,\n" +
-                "    concat(YEAR(encounter_datetime), QUARTER(\n" +
-                "        encounter_datetime))                                       AS yq,\n" +
-                "    group_concat(concat_ws(':', patient_id, encounter_id, (SELECT p.gender\n" +
-                "                                                           FROM person p\n" +
-                "                                                           WHERE p.person_id = e.patient_id),\n" +
-                "                           (SELECT YEAR(e.encounter_datetime) - YEAR(birthdate)\n" +
-                "                                   - (RIGHT(e.encounter_datetime, 5) <\n" +
-                "                                      RIGHT(birthdate, 5))\n" +
+                "            WHERE et.encounter_type_id = e.encounter_type), NULL) AS encounter_type,\n" +
+                "    YEAR(e.encounter_datetime)                                    AS y,\n" +
+                "    MONTH(e.encounter_datetime)                                   AS m,\n" +
+                "    QUARTER(e.encounter_datetime)                                 AS q,\n" +
+                "    concat(YEAR(encounter_datetime), MONTH(encounter_datetime))   AS ym,\n" +
+                "    concat(YEAR(encounter_datetime), QUARTER(encounter_datetime)) AS yq,\n" +
+                "    group_concat(concat_ws(':', patient_id, encounter_id, encounter_datetime,\n" +
+                "                           (SELECT concat_ws(':', p.gender, YEAR(e.encounter_datetime) - YEAR(birthdate) -\n" +
+                "                                                            (RIGHT(e.encounter_datetime, 5) < RIGHT(birthdate, 5)))\n" +
                 "                            FROM person p\n" +
-                "                            WHERE p.person_id = e.patient_id), 'encounter', DATE(e.encounter_datetime),\n" +
-                "                           voided))                                AS age_gender,\n" +
-                "    3                                                              AS grouped_by,\n" +
-                "    COUNT(DISTINCT\n" +
-                "          patient_id)                                              AS total\n" +
+                "                            WHERE p.person_id = e.patient_id),\n" +
+                "                           DATE(e.encounter_datetime),\n" +
+                "                           voided))                               AS age_gender,\n" +
+                "    group_concat((SELECT group_concat(\n" +
+                "        concat_ws(':', o.obs_id, o.concept_id, e.encounter_id, e.patient_id, DATE(e.encounter_datetime),\n" +
+                "                  CONCAT_WS(':', o.value_numeric, o.value_coded, o.value_complex, DATE(o.value_datetime), o.value_drug,\n" +
+                "                            o.value_group_id, o.value_modifier, o.value_text), o.voided))\n" +
+                "                  FROM obs o\n" +
+                "                  WHERE o.encounter_id = e.encounter_id))         AS obs,\n" +
+                "    COUNT(DISTINCT e.patient_id)                                  AS total\n" +
                 "  FROM encounter e\n" +
-                String.format("  WHERE date_created > '%s'\n", date) +
+                "  WHERE e.date_created > '2017-05-31'\n" +
                 "  GROUP BY encounter_type, y, q, m;";
     }
 
     public static String otherQuery(String date) {
-        return "INSERT INTO obs_summary (encounter_type, concept, y, m, q, ym, yq, vals, total)\n" +
+        return "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
                 "            WHERE et.encounter_type_id =\n" +
                 "                  (SELECT e.encounter_type\n" +
                 "                   FROM encounter AS e\n" +
-                "                   WHERE e.encounter_id = o.encounter_id)), 'ANY') AS encounter_type,\n" +
-                "\n" +
-                "    concept_id                                                     AS concept,\n" +
-                "    YEAR(obs_datetime)                                             AS y,\n" +
-                "    MONTH(obs_datetime)                                            AS m,\n" +
-                "    QUARTER(obs_datetime)                                          AS q,\n" +
-                "    concat(YEAR(obs_datetime), MONTH(obs_datetime))                AS ym,\n" +
-                "    concat(YEAR(obs_datetime), QUARTER(obs_datetime))              AS yq,\n" +
-                "    group_concat(concat_ws(':', person_id, encounter_id, (SELECT p.gender\n" +
-                "                                                          FROM person p\n" +
-                "                                                          WHERE p.person_id = o.person_id),\n" +
-                "                           (SELECT YEAR(o.obs_datetime) - YEAR(birthdate)\n" +
-                "                                   - (RIGHT(o.obs_datetime, 5) <\n" +
-                "                                      RIGHT(birthdate, 5))\n" +
+                "                   WHERE e.encounter_id = o.encounter_id)), NULL) AS encounter_type,\n" +
+                "    concept_id                                                    AS concept,\n" +
+                "    CONCAT_WS(':', value_numeric, value_coded, value_complex, value_drug,\n" +
+                "              value_group_id, value_modifier, value_text)         AS val,\n" +
+                "    YEAR(obs_datetime)                                            AS y,\n" +
+                "    MONTH(obs_datetime)                                           AS m,\n" +
+                "    QUARTER(obs_datetime)                                         AS q,\n" +
+                "    concat(YEAR(obs_datetime), MONTH(obs_datetime))               AS ym,\n" +
+                "    concat(YEAR(obs_datetime), QUARTER(obs_datetime))             AS yq,\n" +
+                "    group_concat(concat_ws(':', person_id, obs_id, encounter_id, coalesce(obs_group_id, 0),\n" +
+                "                           (SELECT concat_ws(':', p.gender, YEAR(o.obs_datetime) - YEAR(birthdate) -\n" +
+                "                                                            (RIGHT(o.obs_datetime, 5) < RIGHT(birthdate, 5)))\n" +
                 "                            FROM person p\n" +
-                "                            WHERE p.person_id = o.person_id), concept_id, value_numeric, value_coded, value_complex,\n" +
-                "                           DATE(value_datetime),\n" +
-                "                           value_drug, value_group_id,\n" +
-                "                           value_modifier, value_text, voided))    AS age_gender,\n" +
-                "    COUNT(DISTINCT person_id)                                      AS total\n" +
+                "                            WHERE p.person_id = o.person_id),\n" +
+                "                           voided))                               AS age_gender,\n" +
+                "    COUNT(DISTINCT person_id)                                     AS total\n" +
                 "  FROM obs o\n" +
-                String.format("  WHERE date_created > '%s'\n", date) +
-                "  GROUP BY encounter_type, concept, y, q, m;";
+                "  WHERE o.date_created > '2017-05-31' AND o.concept_id NOT IN (SELECT concept_id\n" +
+                "                                                               FROM concept\n" +
+                "                                                               WHERE datatype_id IN (6, 7, 8))\n" +
+                "  GROUP BY encounter_type, concept, val, y, q, m;";
     }
 
 
     public static String valueDatetimeQuery(String date) {
-        return "INSERT INTO obs_summary (encounter_type, concept, y, m, q, ym, yq, vals, grouped_by, total)\n" +
+        return "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
                 "            WHERE et.encounter_type_id =\n" +
                 "                  (SELECT e.encounter_type\n" +
                 "                   FROM encounter AS e\n" +
-                "                   WHERE e.encounter_id = o.encounter_id)), 'ANY')                                       AS encounter_type,\n" +
-                "    concept_id                                                                                           AS concept,\n" +
-                "    YEAR(value_datetime)                                                                                 AS y,\n" +
-                "    MONTH(value_datetime)                                                                                AS m,\n" +
-                "    QUARTER(value_datetime)                                                                              AS q,\n" +
-                "    concat(YEAR(value_datetime), MONTH(value_datetime))                                                  AS ym,\n" +
-                "    concat(YEAR(value_datetime), QUARTER(value_datetime))                                                AS yq,\n" +
-                "    group_concat(concat_ws(':', person_id, encounter_id, (SELECT p.gender\n" +
-                "                                                          FROM person p\n" +
-                "                                                          WHERE p.person_id = o.person_id),\n" +
-                "                           (SELECT YEAR(o.value_datetime) - YEAR(birthdate)\n" +
-                "                                   - (RIGHT(o.value_datetime, 5) <\n" +
-                "                                      RIGHT(birthdate, 5))\n" +
+                "                   WHERE e.encounter_id = o.encounter_id)), NULL) AS encounter_type,\n" +
+                "    concept_id                                                    AS concept,\n" +
+                "    DATE_FORMAT(value_datetime, '%Y%m')                           AS val,\n" +
+                "    YEAR(value_datetime)                                          AS y,\n" +
+                "    MONTH(value_datetime)                                         AS m,\n" +
+                "    QUARTER(value_datetime)                                       AS q,\n" +
+                "    concat(YEAR(value_datetime), MONTH(value_datetime))           AS ym,\n" +
+                "    concat(YEAR(value_datetime), QUARTER(value_datetime))         AS yq,\n" +
+                "    group_concat(concat_ws(':', person_id, obs_id, encounter_id, coalesce(obs_group_id, 0),\n" +
+                "                           (SELECT concat_ws(':', p.gender, YEAR(o.value_datetime) - YEAR(birthdate) -\n" +
+                "                                                            (RIGHT(o.value_datetime, 5) < RIGHT(birthdate, 5)))\n" +
                 "                            FROM person p\n" +
-                "                            WHERE p.person_id = o.person_id), concept_id, DATE(value_datetime), voided)) AS age_gender,\n" +
-                "    2                                                                                                    AS grouped_by,\n" +
-                "    COUNT(DISTINCT person_id)                                                                            AS total\n" +
+                "                            WHERE p.person_id = o.person_id),\n" +
+                "                           voided))                               AS age_gender,\n" +
+                "    COUNT(DISTINCT person_id)                                     AS total\n" +
                 "  FROM obs o\n" +
-                String.format("  WHERE value_datetime IS NOT NULL AND date_created > '%s'\n", date) +
-                "  GROUP BY encounter_type, concept, y, q, m;";
+                "  WHERE o.date_created > '2017-05-31' AND o.concept_id IN (SELECT concept_id\n" +
+                "                                                           FROM concept\n" +
+                "                                                           WHERE datatype_id IN (6, 7, 8))\n" +
+                "  GROUP BY encounter_type, concept, val, y, q, m;";
     }
 
     public static String deathQuery(String date) {
-        return "INSERT INTO obs_summary (encounter_type, concept, y, m, q, ym, yq, vals, grouped_by, total)\n" +
+        return "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
-                "    'death'                                                           AS encounter_type,\n" +
-                "    'death'                                                           AS concept,\n" +
-                "    YEAR(p.death_date)                                               AS y,\n" +
-                "    MONTH(p.death_date)                                              AS m,\n" +
-                "    QUARTER(p.death_date)                                            AS q,\n" +
-                "    concat(YEAR(p.death_date), MONTH(p.death_date))                  AS ym,\n" +
-                "    concat(YEAR(p.death_date), QUARTER(p.death_date))                AS yq,\n" +
-                "    group_concat(concat_ws(':', person_id, '4', p.gender,\n" +
+                "    'death'                                           AS encounter_type,\n" +
+                "    '0'                                               AS concept,\n" +
+                "    'death'                                           AS concept,\n" +
+                "    YEAR(p.death_date)                                AS y,\n" +
+                "    MONTH(p.death_date)                               AS m,\n" +
+                "    QUARTER(p.death_date)                             AS q,\n" +
+                "    concat(YEAR(p.death_date), MONTH(p.death_date))   AS ym,\n" +
+                "    concat(YEAR(p.death_date), QUARTER(p.death_date)) AS yq,\n" +
+                "    group_concat(concat_ws(':', person_id, 'death', 'death', 0, p.gender,\n" +
                 "                           YEAR(p.death_date) - YEAR(birthdate) - (RIGHT(p.death_date, 5) < RIGHT(birthdate, 5)),\n" +
-                "                           'death', DATE(p.death_date), voided)) AS age_gender,\n" +
-                "    4                                                                AS grouped_by,\n" +
-                "    COUNT(DISTINCT person_id)                                        AS total\n" +
+                "                           voided))                   AS age_gender,\n" +
+                "    COUNT(DISTINCT person_id)                         AS total\n" +
                 "  FROM person p\n" +
-                String.format("  WHERE p.death_date IS NOT NULL AND p.date_created > '%s'\n", date) +
+                "  WHERE p.death_date IS NOT NULL AND p.date_created > '2017-05-31'\n" +
                 "  GROUP BY encounter_type, y, q, m;";
     }
 
