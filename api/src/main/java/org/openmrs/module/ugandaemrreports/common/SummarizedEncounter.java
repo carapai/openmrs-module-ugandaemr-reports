@@ -1,43 +1,34 @@
 package org.openmrs.module.ugandaemrreports.common;
 
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Table;
-import org.openmrs.module.ugandaemrreports.reports.*;
-import org.openmrs.module.ugandaemrreports.reports.Helper;
-
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
 
 /**
  * Created by carapai on 16/07/2017.
  */
-public class SummarizedObs {
+public class SummarizedEncounter {
 
     private Integer encounterType;
-    private Integer concept;
-    private String val;
     private Integer y;
     private Integer q;
     private Integer m;
     private Integer ym;
     private Integer yq;
-    private List<Data> ageGender;
+    private List<EncounterData> ageGender;
+    private String obs;
     private Integer total;
 
-    public SummarizedObs() {
+    public SummarizedEncounter() {
     }
 
-    public SummarizedObs(Integer encounterType, Integer concept, String val, Integer y, Integer m, Integer q, Integer ym, Integer yq, List<Data> ageGender, Integer total) {
+    public SummarizedEncounter(Integer encounterType, Integer y, Integer m, Integer q, Integer ym, Integer yq, List<EncounterData> ageGender,String obs, Integer total) {
         this.encounterType = encounterType;
-        this.concept = concept;
-        this.val = val;
         this.y = y;
         this.q = q;
         this.m = m;
         this.ym = ym;
         this.yq = yq;
         this.ageGender = ageGender;
+        this.obs = obs;
         this.total = total;
     }
 
@@ -48,14 +39,6 @@ public class SummarizedObs {
 
     public void setEncounterType(Integer encounterType) {
         this.encounterType = encounterType;
-    }
-
-    public Integer getConcept() {
-        return concept;
-    }
-
-    public void setConcept(Integer concept) {
-        this.concept = concept;
     }
 
     public Integer getY() {
@@ -98,20 +81,20 @@ public class SummarizedObs {
         this.yq = yq;
     }
 
-    public String getVal() {
-        return val;
-    }
-
-    public void setVal(String val) {
-        this.val = val;
-    }
-
-    public List<Data> getAgeGender() {
+    public List<EncounterData> getAgeGender() {
         return ageGender;
     }
 
-    public void setAgeGender(List<Data> ageGender) {
+    public void setAgeGender(List<EncounterData> ageGender) {
         this.ageGender = ageGender;
+    }
+
+    public String getObs() {
+        return obs;
+    }
+
+    public void setObs(String obs) {
+        this.obs = obs;
     }
 
     public Integer getTotal() {
@@ -142,5 +125,4 @@ public class SummarizedObs {
         return data;
     }
     */
-
 }

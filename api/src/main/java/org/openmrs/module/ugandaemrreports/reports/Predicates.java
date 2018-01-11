@@ -35,7 +35,6 @@ public class Predicates {
         return p -> p.getYq().compareTo(quarter) > 0;
     }
 
-
     public static Predicate<SummarizedObs> be4M(Integer month) {
         return p -> p.getYm().compareTo(month) < 0;
     }
@@ -56,12 +55,16 @@ public class Predicates {
         return p -> p.getYm().compareTo(month) > 0;
     }
 
-    public static Predicate<SummarizedObs> hasEncounterType(String... encounterTypes) {
+    public static Predicate<SummarizedObs> hasEncounterType(Integer... encounterTypes) {
         return p -> Arrays.asList(encounterTypes).contains(p.getEncounterType());
     }
 
-    public static Predicate<SummarizedObs> hasConcepts(String... concepts) {
+    public static Predicate<SummarizedObs> hasConcepts(Integer... concepts) {
         return p -> Arrays.asList(concepts).contains(p.getConcept());
+    }
+
+    public static Predicate<SummarizedObs> hasVal(String... val) {
+        return p -> Arrays.asList(val).contains(p.getVal());
     }
 
     public static Predicate<Data> hasAnswers(String... answers) {
@@ -74,10 +77,6 @@ public class Predicates {
 
     public static Predicate<Data> afterAge(Integer age) {
         return p -> p.getAge().compareTo(age) > 0;
-    }
-
-    public static Predicate<SummarizedObs> hasGroup(Integer... group) {
-        return p -> Arrays.asList(group).contains(p.getGroupedBy());
     }
 
     @SafeVarargs
@@ -120,8 +119,8 @@ public class Predicates {
         return p -> Arrays.asList(encounters).contains(p.getEncounterId());
     }
 
-    public static Predicate<Data> hasPatient(Collection patients) {
-        return p -> Arrays.asList(patients).contains(p.getPatientId());
+    public static Predicate<Data> hasPatient(Collection<Integer> patients) {
+        return p -> patients.contains(p.getPatientId());
     }
 
     public static Predicate<Data> hasEncounter(Collection<Integer> encounters) {

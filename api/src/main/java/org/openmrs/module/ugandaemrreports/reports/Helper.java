@@ -526,7 +526,7 @@ public class Helper {
 
     public static int createObsSummaryTable(Connection connection) throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS obs_summary (\n" +
-                "  encounter_type CHAR(20) NULL,\n" +
+                "  encounter_type INT(3) NULL,\n" +
                 "  concept        INT(10) NULL,\n" +
                 "  val            TEXT,\n" +
                 "  y              INT(4)   NULL,\n" +
@@ -543,7 +543,7 @@ public class Helper {
 
     public static int createEncounterSummaryTable(Connection connection) throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS encounter_summary (\n" +
-                "  encounter_type CHAR(20) NULL,\n" +
+                "  encounter_type INT(3) NULL,\n" +
                 "  y              INT(4)   NULL,\n" +
                 "  m              INT(1)   NULL,\n" +
                 "  q              INT(1)   NULL,\n" +
@@ -559,7 +559,7 @@ public class Helper {
 
     public static List<SummarizedObs> getSummarizedObs(Connection connection, String conditions) throws SQLException {
 
-        String sql = "SELECT encounter_type, concept, y, m, q, ym, yq, vals, grouped_by, total FROM obs_summary";
+        String sql = "SELECT encounter_type, concept, val,  y, m, q, ym, yq, age_gender, total FROM obs_summary";
         if (StringUtils.isNotBlank(conditions)) {
             sql += " WHERE " + conditions;
         }
@@ -569,21 +569,79 @@ public class Helper {
         List<SummarizedObs> summarizedObs = new ArrayList<>();
         while (rs.next()) {
             SummarizedObs obs = new SummarizedObs();
-            obs.setEncounterType(rs.getString(1));
-            obs.setConcept(rs.getString(2));
-            obs.setY(rs.getInt(3));
-            obs.setM(rs.getInt(4));
-            obs.setQ(rs.getInt(5));
-            obs.setYm(rs.getInt(6));
-            obs.setYq(rs.getInt(7));
-            obs.setVals(rs.getString(8));
-            obs.setGroupedBy(rs.getInt(9));
+            Integer concept = rs.getInt(2);
+            String value = rs.getString(3);
+            obs.setEncounterType(rs.getInt(1));
+            obs.setConcept(concept);
+            obs.setY(rs.getInt(4));
+            obs.setM(rs.getInt(5));
+            obs.setQ(rs.getInt(6));
+            obs.setYm(rs.getInt(7));
+            obs.setYq(rs.getInt(8));
+            obs.setVal(value);
+
+            List<Data> data = new ArrayList<>();
+            for (String ageGender : Splitter.on(",").splitToList(rs.getString(9))) {
+                List<String> splitter = Splitter.on(":").splitToList(ageGender);
+                if (splitter.size() == 7) {
+                    Integer patientId = Integer.valueOf(splitter.get(0));
+                    Integer obsId = Integer.valueOf(splitter.get(1));
+                    Integer encounterId = Integer.valueOf(splitter.get(2));
+                    Integer obsGroupId = Integer.valueOf(splitter.get(3));
+                    String gender = splitter.get(4);
+                    Integer age = Integer.valueOf(splitter.get(5));
+                    Integer voided = Integer.valueOf(splitter.get(6));
+                    data.add(new Data(patientId, obsId, encounterId, gender, age, concept, value, obsGroupId, voided));
+                }
+            }
+
+            obs.setAgeGender(data);
             obs.setTotal(rs.getInt(10));
             summarizedObs.add(obs);
         }
         rs.close();
         stmt.close();
         return summarizedObs;
+    }
+
+    public static List<SummarizedEncounter> getSummarizedEncounters(Connection connection, String conditions) throws SQLException {
+
+        String sql = "SELECT encounter_type, y, m, q, ym, yq, age_gender,total FROM encounter_summary";
+        if (StringUtils.isNotBlank(conditions)) {
+            sql += " WHERE " + conditions;
+        }
+        Statement stmt = connection.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
+        stmt.setFetchSize(Integer.MIN_VALUE);
+        ResultSet rs = stmt.executeQuery(sql);
+        List<SummarizedEncounter> summarizedEncounters = new ArrayList<>();
+        while (rs.next()) {
+            SummarizedEncounter encounter = new SummarizedEncounter();
+            encounter.setEncounterType(rs.getInt(1));
+            encounter.setY(rs.getInt(2));
+            encounter.setM(rs.getInt(3));
+            encounter.setQ(rs.getInt(4));
+            encounter.setYm(rs.getInt(5));
+            encounter.setYq(rs.getInt(6));
+
+            List<EncounterData> data = new ArrayList<>();
+            for (String ageGender : Splitter.on(",").splitToList(rs.getString(7))) {
+                List<String> splitter = Splitter.on(":").splitToList(ageGender);
+                Integer patientId = Integer.valueOf(splitter.get(0));
+                Integer encounterId = Integer.valueOf(splitter.get(1));
+                String gender = splitter.get(2);
+                Integer age = Integer.valueOf(splitter.get(3));
+                Date encounterDate = DateUtil.parseYmd(splitter.get(4));
+                Integer voided = Integer.valueOf(splitter.get(5));
+                data.add(new EncounterData(patientId, encounterId, gender, age, encounterDate, voided));
+            }
+
+            encounter.setAgeGender(data);
+            encounter.setTotal(rs.getInt(8));
+            summarizedEncounters.add(encounter);
+        }
+        rs.close();
+        stmt.close();
+        return summarizedEncounters;
     }
 
     public static void summarizeObs(Connection connection, String date) throws SQLException {
@@ -622,7 +680,7 @@ public class Helper {
 
 
     public static String encounterSummaryQuery(String date) {
-        return "INSERT INTO encounter_summary (encounter_type, y, m, q, ym, yq, age_gender, obs, total)\n" +
+        String sql = "INSERT INTO encounter_summary (encounter_type, y, m, q, ym, yq, age_gender, obs, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
@@ -632,7 +690,7 @@ public class Helper {
                 "    QUARTER(e.encounter_datetime)                                 AS q,\n" +
                 "    concat(YEAR(encounter_datetime), MONTH(encounter_datetime))   AS ym,\n" +
                 "    concat(YEAR(encounter_datetime), QUARTER(encounter_datetime)) AS yq,\n" +
-                "    group_concat(concat_ws(':', patient_id, encounter_id, encounter_datetime,\n" +
+                "    group_concat(concat_ws(':', patient_id, encounter_id,\n" +
                 "                           (SELECT concat_ws(':', p.gender, YEAR(e.encounter_datetime) - YEAR(birthdate) -\n" +
                 "                                                            (RIGHT(e.encounter_datetime, 5) < RIGHT(birthdate, 5)))\n" +
                 "                            FROM person p\n" +
@@ -647,12 +705,13 @@ public class Helper {
                 "                  WHERE o.encounter_id = e.encounter_id))         AS obs,\n" +
                 "    COUNT(DISTINCT e.patient_id)                                  AS total\n" +
                 "  FROM encounter e\n" +
-                "  WHERE e.date_created > '2017-05-31'\n" +
+                "  WHERE e.date_created > '1900-01-01'\n" +
                 "  GROUP BY encounter_type, y, q, m;";
+        return sql.replace("1900-01-01", date);
     }
 
     public static String otherQuery(String date) {
-        return "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+        String sql = "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
@@ -676,15 +735,16 @@ public class Helper {
                 "                           voided))                               AS age_gender,\n" +
                 "    COUNT(DISTINCT person_id)                                     AS total\n" +
                 "  FROM obs o\n" +
-                "  WHERE o.date_created > '2017-05-31' AND o.concept_id NOT IN (SELECT concept_id\n" +
+                "  WHERE o.date_created > '1900-01-01' AND o.concept_id NOT IN (SELECT concept_id\n" +
                 "                                                               FROM concept\n" +
                 "                                                               WHERE datatype_id IN (6, 7, 8))\n" +
                 "  GROUP BY encounter_type, concept, val, y, q, m;";
+        return sql.replace("1900-01-01", date);
     }
 
 
     public static String valueDatetimeQuery(String date) {
-        return "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+        String sql = "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
@@ -707,30 +767,33 @@ public class Helper {
                 "                           voided))                               AS age_gender,\n" +
                 "    COUNT(DISTINCT person_id)                                     AS total\n" +
                 "  FROM obs o\n" +
-                "  WHERE o.date_created > '2017-05-31' AND o.concept_id IN (SELECT concept_id\n" +
+                "  WHERE o.date_created > '1900-01-01' AND o.concept_id IN (SELECT concept_id\n" +
                 "                                                           FROM concept\n" +
                 "                                                           WHERE datatype_id IN (6, 7, 8))\n" +
                 "  GROUP BY encounter_type, concept, val, y, q, m;";
+
+        return sql.replace("1900-01-01", date);
     }
 
     public static String deathQuery(String date) {
-        return "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+        String sql = "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
-                "    'death'                                           AS encounter_type,\n" +
+                "    '0'                                               AS encounter_type,\n" +
                 "    '0'                                               AS concept,\n" +
-                "    'death'                                           AS concept,\n" +
+                "    '0'                                               AS val,\n" +
                 "    YEAR(p.death_date)                                AS y,\n" +
                 "    MONTH(p.death_date)                               AS m,\n" +
                 "    QUARTER(p.death_date)                             AS q,\n" +
                 "    concat(YEAR(p.death_date), MONTH(p.death_date))   AS ym,\n" +
                 "    concat(YEAR(p.death_date), QUARTER(p.death_date)) AS yq,\n" +
-                "    group_concat(concat_ws(':', person_id, 'death', 'death', 0, p.gender,\n" +
+                "    group_concat(concat_ws(':', person_id, '0', '0', '0', p.gender,\n" +
                 "                           YEAR(p.death_date) - YEAR(birthdate) - (RIGHT(p.death_date, 5) < RIGHT(birthdate, 5)),\n" +
                 "                           voided))                   AS age_gender,\n" +
                 "    COUNT(DISTINCT person_id)                         AS total\n" +
                 "  FROM person p\n" +
-                "  WHERE p.death_date IS NOT NULL AND p.date_created > '2017-05-31'\n" +
+                "  WHERE p.death_date IS NOT NULL AND p.date_created > '1900-01-01'\n" +
                 "  GROUP BY encounter_type, y, q, m;";
+        return sql.replace("1900-01-01", date);
     }
 
     public static void addData(Map<String, Long> data, MapDataSet mapDataSet, String dataElement) {
@@ -849,7 +912,7 @@ public class Helper {
         List<Data> result = new ArrayList<>();
 
         for (SummarizedObs summarizedObs : encounterCodedObs) {
-            result.addAll(summarizedObs.getData());
+            result.addAll(summarizedObs.getAgeGender());
         }
 
         return result;

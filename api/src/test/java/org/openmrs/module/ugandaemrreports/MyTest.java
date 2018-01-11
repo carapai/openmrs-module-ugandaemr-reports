@@ -47,7 +47,20 @@ public class MyTest {
     public void testDatabaseSearch() throws IOException, ParseException, SQLException, ClassNotFoundException {
         Connection connection = testSqlConnection();
 
-        List<String> zeros106 = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h");
+        Integer summaryEncounterType = 14;
+        Integer encounterEncounterType = 15;
+
+        String quarter = getObsPeriod2(startDate, Enums.Period.QUARTERLY);
+
+        String encounterQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter, "encounter_type IN (15,16)");
+
+        List<SummarizedObs> obs = getSummarizedObs(connection, encounterQuery);
+        List<SummarizedEncounter> summarizedEncounters = getSummarizedEncounters(connection, "");
+
+        List<SummarizedObs> transferInB4Art = filter(obs, and(hasConcepts(99110), hasEncounterType(15)));
+        List<SummarizedObs> transferInOnArt = filter(obs, and(hasConcepts(99160), hasEncounterType(15)));
+
+        /*List<String> zeros106 = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h");
         List<String> zerosFemales = Arrays.asList("f", "h");
         List<String> zerosPreArt = Arrays.asList("a", "b");
 
@@ -189,7 +202,7 @@ public class MyTest {
         Map<String, Object> data4 = get106B(q4, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
         Map<String, Object> data5 = get106B(q5, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
         Map<String, Object> data6 = get106B(q6, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
-        Map<String, Object> data7 = get106B(q7, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);
+        Map<String, Object> data7 = get106B(q7, artStart, pregnantWomen, baselineCD4, ti, to, stopped, restarted, dead, cd4, visits, encounterEncounters, endDate);*/
     }
 
     @Test

@@ -39,7 +39,7 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
         List<String> zerosFemales = Arrays.asList("f", "h");
         List<String> zerosPreArt = Arrays.asList("a", "b");
 
-        try {
+        /*try {
 
             Connection connection = sqlConnection();
             Date startDate = definition.getStartDate();
@@ -256,9 +256,7 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
 
         } catch (Exception e) {
             System.out.println("Some silly error is there");
-        }
+        }*/
         return dataSet;
     }
-
-
 }
