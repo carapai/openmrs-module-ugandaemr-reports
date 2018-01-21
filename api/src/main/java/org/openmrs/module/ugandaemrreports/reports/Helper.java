@@ -6,6 +6,7 @@ import com.google.common.collect.*;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.stat.StatUtils;
+import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.reporting.common.DateUtil;
@@ -524,8 +525,8 @@ public class Helper {
         return stmt.executeUpdate();
     }
 
-    public static int createObsSummaryTable(Connection connection) throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS obs_summary (\n" +
+    public static int createValueCodedTable(Connection connection) throws SQLException {
+        String sql = "CREATE TABLE IF NOT EXISTS value_coded (\n" +
                 "  encounter_type INT(3) NULL,\n" +
                 "  concept        INT(10) NULL,\n" +
                 "  val            TEXT,\n" +
@@ -541,8 +542,76 @@ public class Helper {
         return executeQuery(sql, connection);
     }
 
-    public static int createEncounterSummaryTable(Connection connection) throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS encounter_summary (\n" +
+    public static int createValueNumericTable(Connection connection) throws SQLException {
+        String sql = "CREATE TABLE IF NOT EXISTS value_numeric (\n" +
+                "  encounter_type INT(3) NULL,\n" +
+                "  concept        INT(10) NULL,\n" +
+                "  val            TEXT,\n" +
+                "  y              INT(4)   NULL,\n" +
+                "  m              INT(1)   NULL,\n" +
+                "  q              INT(1)   NULL,\n" +
+                "  ym             INT(6)   NULL,\n" +
+                "  yq             INT(6)   NULL,\n" +
+                "  age_gender     LONGTEXT,\n" +
+                "  total          INT(5)\n" +
+                ");";
+
+        return executeQuery(sql, connection);
+    }
+
+    public static int createValueDatetimeTable(Connection connection) throws SQLException {
+        String sql = "CREATE TABLE IF NOT EXISTS value_datetime (\n" +
+                "  encounter_type INT(3) NULL,\n" +
+                "  concept        INT(10) NULL,\n" +
+                "  val            TEXT,\n" +
+                "  y              INT(4)   NULL,\n" +
+                "  m              INT(1)   NULL,\n" +
+                "  q              INT(1)   NULL,\n" +
+                "  ym             INT(6)   NULL,\n" +
+                "  yq             INT(6)   NULL,\n" +
+                "  age_gender     LONGTEXT,\n" +
+                "  total          INT(5)\n" +
+                ");";
+
+        return executeQuery(sql, connection);
+    }
+
+    public static int createValueTextTable(Connection connection) throws SQLException {
+        String sql = "CREATE TABLE IF NOT EXISTS value_text (\n" +
+                "  encounter_type INT(3) NULL,\n" +
+                "  concept        INT(10) NULL,\n" +
+                "  val            TEXT,\n" +
+                "  y              INT(4)   NULL,\n" +
+                "  m              INT(1)   NULL,\n" +
+                "  q              INT(1)   NULL,\n" +
+                "  ym             INT(6)   NULL,\n" +
+                "  yq             INT(6)   NULL,\n" +
+                "  age_gender     LONGTEXT,\n" +
+                "  total          INT(5)\n" +
+                ");";
+
+        return executeQuery(sql, connection);
+    }
+
+    public static int createValueDeathTable(Connection connection) throws SQLException {
+        String sql = "CREATE TABLE IF NOT EXISTS value_death (\n" +
+                "  encounter_type INT(3) NULL,\n" +
+                "  concept        INT(10) NULL,\n" +
+                "  val            TEXT,\n" +
+                "  y              INT(4)   NULL,\n" +
+                "  m              INT(1)   NULL,\n" +
+                "  q              INT(1)   NULL,\n" +
+                "  ym             INT(6)   NULL,\n" +
+                "  yq             INT(6)   NULL,\n" +
+                "  age_gender     LONGTEXT,\n" +
+                "  total          INT(5)\n" +
+                ");";
+
+        return executeQuery(sql, connection);
+    }
+
+    public static int createValueEncounterTable(Connection connection) throws SQLException {
+        String sql = "CREATE TABLE IF NOT EXISTS value_encounter (\n" +
                 "  encounter_type INT(3) NULL,\n" +
                 "  y              INT(4)   NULL,\n" +
                 "  m              INT(1)   NULL,\n" +
@@ -557,12 +626,14 @@ public class Helper {
         return executeQuery(sql, connection);
     }
 
-    public static List<SummarizedObs> getSummarizedObs(Connection connection, String conditions) throws SQLException {
+    public static List<SummarizedObs> getSummarizedObs(Connection connection, String table, String conditions) throws SQLException {
 
-        String sql = "SELECT encounter_type, concept, val,  y, m, q, ym, yq, age_gender, total FROM obs_summary";
+        String sql = String.format("SELECT encounter_type, concept, val,  y, m, q, ym, yq, age_gender, total FROM %s", table);
+
         if (StringUtils.isNotBlank(conditions)) {
             sql += " WHERE " + conditions;
         }
+        // String sql = sql1 + " UNION ALL " + sql2 + " UNION ALL " + sql3 + " UNION ALL " + sql4 + " UNION ALL " + sql5;
         Statement stmt = connection.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
         stmt.setFetchSize(Integer.MIN_VALUE);
         ResultSet rs = stmt.executeQuery(sql);
@@ -583,18 +654,18 @@ public class Helper {
             List<Data> data = new ArrayList<>();
             for (String ageGender : Splitter.on(",").splitToList(rs.getString(9))) {
                 List<String> splitter = Splitter.on(":").splitToList(ageGender);
-                if (splitter.size() == 7) {
+                if (splitter.size() == 8) {
                     Integer patientId = Integer.valueOf(splitter.get(0));
                     Integer obsId = Integer.valueOf(splitter.get(1));
                     Integer encounterId = Integer.valueOf(splitter.get(2));
                     Integer obsGroupId = Integer.valueOf(splitter.get(3));
                     String gender = splitter.get(4);
-                    Integer age = Integer.valueOf(splitter.get(5));
-                    Integer voided = Integer.valueOf(splitter.get(6));
-                    data.add(new Data(patientId, obsId, encounterId, gender, age, concept, value, obsGroupId, voided));
+                    Date dob = DateUtil.parseYmd(splitter.get(5));
+                    Integer age = Integer.valueOf(splitter.get(6));
+                    Integer voided = Integer.valueOf(splitter.get(7));
+                    data.add(new Data(patientId, obsId, encounterId, gender, dob, age, concept, value, obsGroupId, voided));
                 }
             }
-
             obs.setAgeGender(data);
             obs.setTotal(rs.getInt(10));
             summarizedObs.add(obs);
@@ -606,7 +677,7 @@ public class Helper {
 
     public static List<SummarizedEncounter> getSummarizedEncounters(Connection connection, String conditions) throws SQLException {
 
-        String sql = "SELECT encounter_type, y, m, q, ym, yq, age_gender,total FROM encounter_summary";
+        String sql = "SELECT encounter_type, y, m, q, ym, yq, age_gender,total FROM value_encounter";
         if (StringUtils.isNotBlank(conditions)) {
             sql += " WHERE " + conditions;
         }
@@ -623,16 +694,20 @@ public class Helper {
             encounter.setYm(rs.getInt(5));
             encounter.setYq(rs.getInt(6));
 
-            List<EncounterData> data = new ArrayList<>();
+            List<Data> data = new ArrayList<>();
             for (String ageGender : Splitter.on(",").splitToList(rs.getString(7))) {
                 List<String> splitter = Splitter.on(":").splitToList(ageGender);
-                Integer patientId = Integer.valueOf(splitter.get(0));
-                Integer encounterId = Integer.valueOf(splitter.get(1));
-                String gender = splitter.get(2);
-                Integer age = Integer.valueOf(splitter.get(3));
-                Date encounterDate = DateUtil.parseYmd(splitter.get(4));
-                Integer voided = Integer.valueOf(splitter.get(5));
-                data.add(new EncounterData(patientId, encounterId, gender, age, encounterDate, voided));
+                if (splitter.size() == 9) {
+                    Integer patientId = Integer.valueOf(splitter.get(0));
+                    Integer obsId = Integer.valueOf(splitter.get(1));
+                    Integer encounterId = Integer.valueOf(splitter.get(2));
+                    Integer obsGroupId = Integer.valueOf(splitter.get(3));
+                    String gender = splitter.get(4);
+                    Date dob = DateUtil.parseYmd(splitter.get(5));
+                    Integer age = Integer.valueOf(splitter.get(6));
+                    Integer voided = Integer.valueOf(splitter.get(8));
+                    data.add(new Data(patientId, obsId, encounterId, gender, dob, age, encounterId, splitter.get(7), obsGroupId, voided));
+                }
             }
 
             encounter.setAgeGender(data);
@@ -645,13 +720,19 @@ public class Helper {
     }
 
     public static void summarizeObs(Connection connection, String date) throws SQLException {
-        createObsSummaryTable(connection);
-        createEncounterSummaryTable(connection);
+//        createValueCodedTable(connection);
+//        createValueDatetimeTable(connection);
+//        createValueDeathTable(connection);
+//        createValueEncounterTable(connection);
+//        createValueNumericTable(connection);
+//        createValueTextTable(connection);
         executeQuery("SET @@group_concat_max_len = 10000000;", connection);
-        executeQuery(otherQuery(date), connection);
-        executeQuery(valueDatetimeQuery(date), connection);
-        executeQuery(encounterSummaryQuery(date), connection);
-        executeQuery(deathQuery(date), connection);
+//        executeQuery(valueCodedQuery(date), connection);
+//        executeQuery(valueNumericQuery(date), connection);
+//        executeQuery(valueDatetimeQuery(date), connection);
+//        executeQuery(valueTextQuery(date), connection);
+        executeQuery(encounterQuery(date), connection);
+//        executeQuery(deathQuery(date), connection);
     }
 
     public static Multimap<Integer, Integer> getFirstEncounters(Connection connection, String patients) throws SQLException {
@@ -679,8 +760,8 @@ public class Helper {
     }
 
 
-    public static String encounterSummaryQuery(String date) {
-        String sql = "INSERT INTO encounter_summary (encounter_type, y, m, q, ym, yq, age_gender, obs, total)\n" +
+    public static String encounterQuery(String date) {
+        String sql = "INSERT INTO value_encounter (encounter_type, y, m, q, ym, yq, age_gender, obs, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
@@ -690,9 +771,10 @@ public class Helper {
                 "    QUARTER(e.encounter_datetime)                                 AS q,\n" +
                 "    concat(YEAR(encounter_datetime), MONTH(encounter_datetime))   AS ym,\n" +
                 "    concat(YEAR(encounter_datetime), QUARTER(encounter_datetime)) AS yq,\n" +
-                "    group_concat(concat_ws(':', patient_id, encounter_id,\n" +
-                "                           (SELECT concat_ws(':', p.gender, YEAR(e.encounter_datetime) - YEAR(birthdate) -\n" +
-                "                                                            (RIGHT(e.encounter_datetime, 5) < RIGHT(birthdate, 5)))\n" +
+                "    group_concat(concat_ws(':', patient_id, encounter_id, encounter_id, 0,\n" +
+                "                           (SELECT concat_ws(':', p.gender, p.birthdate, YEAR(e.encounter_datetime) - YEAR(birthdate) -\n" +
+                "                                                                         (RIGHT(e.encounter_datetime, 5) <\n" +
+                "                                                                          RIGHT(birthdate, 5)))\n" +
                 "                            FROM person p\n" +
                 "                            WHERE p.person_id = e.patient_id),\n" +
                 "                           DATE(e.encounter_datetime),\n" +
@@ -710,8 +792,8 @@ public class Helper {
         return sql.replace("1900-01-01", date);
     }
 
-    public static String otherQuery(String date) {
-        String sql = "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+    public static String valueCodedQuery(String date) {
+        String sql = "INSERT INTO value_coded (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
@@ -720,31 +802,89 @@ public class Helper {
                 "                   FROM encounter AS e\n" +
                 "                   WHERE e.encounter_id = o.encounter_id)), NULL) AS encounter_type,\n" +
                 "    concept_id                                                    AS concept,\n" +
-                "    CONCAT_WS(':', value_numeric, value_coded, value_complex, value_drug,\n" +
-                "              value_group_id, value_modifier, value_text)         AS val,\n" +
+                "    value_coded                                                   AS val,\n" +
                 "    YEAR(obs_datetime)                                            AS y,\n" +
                 "    MONTH(obs_datetime)                                           AS m,\n" +
                 "    QUARTER(obs_datetime)                                         AS q,\n" +
                 "    concat(YEAR(obs_datetime), MONTH(obs_datetime))               AS ym,\n" +
                 "    concat(YEAR(obs_datetime), QUARTER(obs_datetime))             AS yq,\n" +
                 "    group_concat(concat_ws(':', person_id, obs_id, encounter_id, coalesce(obs_group_id, 0),\n" +
-                "                           (SELECT concat_ws(':', p.gender, YEAR(o.obs_datetime) - YEAR(birthdate) -\n" +
-                "                                                            (RIGHT(o.obs_datetime, 5) < RIGHT(birthdate, 5)))\n" +
+                "                           (SELECT concat_ws(':', p.gender, p.birthdate, YEAR(o.obs_datetime) - YEAR(birthdate) -\n" +
+                "                                                                         (RIGHT(o.obs_datetime, 5) <\n" +
+                "                                                                          RIGHT(birthdate, 5)))\n" +
                 "                            FROM person p\n" +
                 "                            WHERE p.person_id = o.person_id),\n" +
                 "                           voided))                               AS age_gender,\n" +
                 "    COUNT(DISTINCT person_id)                                     AS total\n" +
                 "  FROM obs o\n" +
-                "  WHERE o.date_created > '1900-01-01' AND o.concept_id NOT IN (SELECT concept_id\n" +
-                "                                                               FROM concept\n" +
-                "                                                               WHERE datatype_id IN (6, 7, 8))\n" +
+                "  WHERE o.date_created > '1900-01-01' AND value_coded IS NOT NULL\n" +
+                "  GROUP BY encounter_type, concept, val, y, q, m;";
+        return sql.replace("1900-01-01", date);
+    }
+
+    public static String valueTextQuery(String date) {
+        String sql = "INSERT INTO value_text (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+                "  SELECT\n" +
+                "    IFNULL((SELECT et.encounter_type_id\n" +
+                "            FROM encounter_type AS et\n" +
+                "            WHERE et.encounter_type_id =\n" +
+                "                  (SELECT e.encounter_type\n" +
+                "                   FROM encounter AS e\n" +
+                "                   WHERE e.encounter_id = o.encounter_id)), NULL) AS encounter_type,\n" +
+                "    concept_id                                                    AS concept,\n" +
+                "    value_text                                                    AS val,\n" +
+                "    YEAR(obs_datetime)                                            AS y,\n" +
+                "    MONTH(obs_datetime)                                           AS m,\n" +
+                "    QUARTER(obs_datetime)                                         AS q,\n" +
+                "    concat(YEAR(obs_datetime), MONTH(obs_datetime))               AS ym,\n" +
+                "    concat(YEAR(obs_datetime), QUARTER(obs_datetime))             AS yq,\n" +
+                "    group_concat(concat_ws(':', person_id, obs_id, encounter_id, coalesce(obs_group_id, 0),\n" +
+                "                           (SELECT concat_ws(':', p.gender, p.birthdate, YEAR(o.obs_datetime) - YEAR(birthdate) -\n" +
+                "                                                                         (RIGHT(o.obs_datetime, 5) <\n" +
+                "                                                                          RIGHT(birthdate, 5)))\n" +
+                "                            FROM person p\n" +
+                "                            WHERE p.person_id = o.person_id),\n" +
+                "                           voided))                               AS age_gender,\n" +
+                "    COUNT(DISTINCT person_id)                                     AS total\n" +
+                "  FROM obs o\n" +
+                "  WHERE o.date_created > '1900-01-01' AND o.value_text IS NOT NULL AND value_coded IS NULL\n" +
+                "  GROUP BY encounter_type, concept, val, y, q, m;";
+        return sql.replace("1900-01-01", date);
+    }
+
+    public static String valueNumericQuery(String date) {
+        String sql = "INSERT INTO value_numeric (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+                "  SELECT\n" +
+                "    IFNULL((SELECT et.encounter_type_id\n" +
+                "            FROM encounter_type AS et\n" +
+                "            WHERE et.encounter_type_id =\n" +
+                "                  (SELECT e.encounter_type\n" +
+                "                   FROM encounter AS e\n" +
+                "                   WHERE e.encounter_id = o.encounter_id)), NULL) AS encounter_type,\n" +
+                "    concept_id                                                    AS concept,\n" +
+                "    value_numeric                                                 AS val,\n" +
+                "    YEAR(obs_datetime)                                            AS y,\n" +
+                "    MONTH(obs_datetime)                                           AS m,\n" +
+                "    QUARTER(obs_datetime)                                         AS q,\n" +
+                "    concat(YEAR(obs_datetime), MONTH(obs_datetime))               AS ym,\n" +
+                "    concat(YEAR(obs_datetime), QUARTER(obs_datetime))             AS yq,\n" +
+                "    group_concat(concat_ws(':', person_id, obs_id, encounter_id, coalesce(obs_group_id, 0),\n" +
+                "                           (SELECT concat_ws(':', p.gender, p.birthdate, YEAR(o.obs_datetime) - YEAR(birthdate) -\n" +
+                "                                                                         (RIGHT(o.obs_datetime, 5) <\n" +
+                "                                                                          RIGHT(birthdate, 5)))\n" +
+                "                            FROM person p\n" +
+                "                            WHERE p.person_id = o.person_id),\n" +
+                "                           voided))                               AS age_gender,\n" +
+                "    COUNT(DISTINCT person_id)                                     AS total\n" +
+                "  FROM obs o\n" +
+                "  WHERE o.date_created > '1900-01-01' AND o.value_numeric IS NOT NULL\n" +
                 "  GROUP BY encounter_type, concept, val, y, q, m;";
         return sql.replace("1900-01-01", date);
     }
 
 
     public static String valueDatetimeQuery(String date) {
-        String sql = "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+        String sql = "INSERT INTO value_datatime (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
                 "    IFNULL((SELECT et.encounter_type_id\n" +
                 "            FROM encounter_type AS et\n" +
@@ -760,33 +900,32 @@ public class Helper {
                 "    concat(YEAR(value_datetime), MONTH(value_datetime))           AS ym,\n" +
                 "    concat(YEAR(value_datetime), QUARTER(value_datetime))         AS yq,\n" +
                 "    group_concat(concat_ws(':', person_id, obs_id, encounter_id, coalesce(obs_group_id, 0),\n" +
-                "                           (SELECT concat_ws(':', p.gender, YEAR(o.value_datetime) - YEAR(birthdate) -\n" +
-                "                                                            (RIGHT(o.value_datetime, 5) < RIGHT(birthdate, 5)))\n" +
+                "                           (SELECT concat_ws(':', p.gender, p.birthdate, YEAR(o.value_datetime) - YEAR(birthdate) -\n" +
+                "                                                                         (RIGHT(o.value_datetime, 5) <\n" +
+                "                                                                          RIGHT(birthdate, 5)))\n" +
                 "                            FROM person p\n" +
                 "                            WHERE p.person_id = o.person_id),\n" +
                 "                           voided))                               AS age_gender,\n" +
                 "    COUNT(DISTINCT person_id)                                     AS total\n" +
                 "  FROM obs o\n" +
-                "  WHERE o.date_created > '1900-01-01' AND o.concept_id IN (SELECT concept_id\n" +
-                "                                                           FROM concept\n" +
-                "                                                           WHERE datatype_id IN (6, 7, 8))\n" +
+                "  WHERE o.date_created > '1900-01-01' AND o.value_datetime IS NOT NULL\n" +
                 "  GROUP BY encounter_type, concept, val, y, q, m;";
 
         return sql.replace("1900-01-01", date);
     }
 
     public static String deathQuery(String date) {
-        String sql = "INSERT INTO obs_summary (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
+        String sql = "INSERT INTO value_death (encounter_type, concept, val, y, m, q, ym, yq, age_gender, total)\n" +
                 "  SELECT\n" +
-                "    '0'                                               AS encounter_type,\n" +
-                "    '0'                                               AS concept,\n" +
-                "    '0'                                               AS val,\n" +
+                "    0                                                 AS encounter_type,\n" +
+                "    0                                                 AS concept,\n" +
+                "    0                                                 AS val,\n" +
                 "    YEAR(p.death_date)                                AS y,\n" +
                 "    MONTH(p.death_date)                               AS m,\n" +
                 "    QUARTER(p.death_date)                             AS q,\n" +
                 "    concat(YEAR(p.death_date), MONTH(p.death_date))   AS ym,\n" +
                 "    concat(YEAR(p.death_date), QUARTER(p.death_date)) AS yq,\n" +
-                "    group_concat(concat_ws(':', person_id, '0', '0', '0', p.gender,\n" +
+                "    group_concat(concat_ws(':', person_id, 0, 0, 0, p.gender, p.birthdate,\n" +
                 "                           YEAR(p.death_date) - YEAR(birthdate) - (RIGHT(p.death_date, 5) < RIGHT(birthdate, 5)),\n" +
                 "                           voided))                   AS age_gender,\n" +
                 "    COUNT(DISTINCT person_id)                         AS total\n" +
@@ -871,6 +1010,12 @@ public class Helper {
                 .collect(Collectors.toList());
     }
 
+    public static List<SummarizedEncounter> filterEncounter(List<SummarizedEncounter> summarizedObs, Predicate<SummarizedEncounter> predicate) {
+        return summarizedObs.stream()
+                .filter(predicate)
+                .collect(Collectors.toList());
+    }
+
     public static List<Data> filterData(List<Data> summarizedObs, Predicate<Data> predicate) {
         return summarizedObs.stream()
                 .filter(predicate)
@@ -912,6 +1057,17 @@ public class Helper {
         List<Data> result = new ArrayList<>();
 
         for (SummarizedObs summarizedObs : encounterCodedObs) {
+            result.addAll(summarizedObs.getAgeGender());
+        }
+
+        return result;
+
+    }
+
+    public static List<Data> reduceSummarizedEncounters(Collection<SummarizedEncounter> encounterCodedObs) {
+        List<Data> result = new ArrayList<>();
+
+        for (SummarizedEncounter summarizedObs : encounterCodedObs) {
             result.addAll(summarizedObs.getAgeGender());
         }
 
@@ -999,82 +1155,141 @@ public class Helper {
         return reduceSummarizedObs(filter(summarizedObs, predicate));
     }
 
+    public static List<Data> filterAndReduce1(List<SummarizedEncounter> summarizedObs, Predicate<SummarizedEncounter> predicate) {
+        return reduceSummarizedEncounters(filterEncounter(summarizedObs, predicate));
+    }
+
     public static List<Data> filterAndReduce(List<SummarizedObs> summarizedObs, Predicate<SummarizedObs> predicate, Predicate<Data> dataPredicate) {
         return filterData(reduceSummarizedObs(filter(summarizedObs, predicate)), dataPredicate);
     }
 
+    public static List<Data> filterAndReduce1(List<SummarizedEncounter> summarizedObs, Predicate<SummarizedEncounter> predicate, Predicate<Data> dataPredicate) {
+        return filterData(reduceSummarizedEncounters(filterEncounter(summarizedObs, predicate)), dataPredicate);
+    }
 
-    public static Map<String, Object> get106B(
-            List<LocalDate> localDates,
-            List<SummarizedObs> artStart,
-            Map<Integer, List<Data>> pregnantWomen,
-            Map<Integer, List<Data>> baselineCD4,
-            Map<Integer, List<Data>> ti,
-            Map<Integer, List<Data>> to,
-            Map<Integer, List<Data>> stopped,
-            Map<Integer, List<Data>> restarted,
-            Map<Integer, List<Data>> dead,
-            List<SummarizedObs> availableCd4,
-            List<SummarizedObs> visits,
-            List<SummarizedObs> encounterEncounters,
-            LocalDate end) throws SQLException {
 
-        Integer quarter = getQuarter(localDates);
-        Integer currentQuarter = getQuarter(end);
+    public static Map<String, Object> get1061BCohorts(Date endDate, List<LocalDate> localDates, List<SummarizedObs> baseData, Connection connection) throws SQLException {
+        CohortTracker cohortTracker = new CohortTracker();
+        Map<String, Set<Integer>> cohorts = new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
+
+        LocalDate ending = StubDate.dateOf(endDate);
+
+        Set<Integer> concepts = new HashSet<>(Arrays.asList(5096, 99071, 99072, 99603, 99160, 90206, 90306, 99165,
+                90211, 5240, 90209, 99132, 99084, 99085, 5497, 730));
+        Set<Integer> encounterTypes = new HashSet<>(Arrays.asList(8, 9));
 
         DecimalFormat df = new DecimalFormat("###.##");
 
-        Map<String, Object> data = new HashMap<>();
+        Integer quarter = getQuarter(localDates);
+        Map<Integer, List<Data>> startedArt = groupByPerson(filterAndReduce(baseData, and(hasConcepts(99161),
+                inTheQ(quarter))));
 
-        Map<Integer, List<Data>> startedArt = groupByPerson(filterAndReduce(artStart, inTheQ(quarter)));
-        Map<Integer, List<Data>> pregnant = intersection(startedArt, pregnantWomen);
-        Map<Integer, List<Data>> cd4 = groupByPerson(filterAndReduce(availableCd4, and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter))));
+        Map<Integer, List<Data>> deadPatients = groupByPerson(filterAndReduce(baseData, hasConcepts(0)));
 
-        Map<Integer, List<Data>> withBaseline = intersection(baselineCD4, startedArt);
-        Map<Integer, List<Data>> transferIns = intersection(startedArt, ti);
-        Map<Integer, List<Data>> transferOuts = intersection(startedArt, to);
+        if (startedArt.keySet().size() > 0) {
+            cohorts.put(String.valueOf("cohort"), startedArt.keySet());
+        }
+
+        Map<String, Predicate<Data>> indicators = new HashMap<>();
+        Map<String, Predicate<Data>> aggregations = new HashMap<>();
+
+        indicators.put("baselineCD4", hasConcepts1(99071));
+        indicators.put("baselineCD4500", and1(hasConcepts1(99071), max("500")));
+        indicators.put("ti", hasConcepts1(99160));
+        indicators.put("to", hasConcepts1(90306, 99165, 90211));
+        indicators.put("stopped", hasConcepts1(99084));
+        indicators.put("restarted", hasConcepts1(99085));
+        indicators.put("cd4", hasConcepts1(5497, 730));
+        indicators.put("cd4500", and1(hasConcepts1(5497, 730), max("500")));
+        indicators.put("visits", hasConcepts1(5096));
+        indicators.put("dead", hasPatient(deadPatients.keySet()));
+
+        aggregations.put("pregnant", and1(hasConcepts1(99072, 99603), hasVal1("90003", "1065")));
 
 
-        Map<Integer, List<Data>> withBaselinePregnant = intersection(baselineCD4, pregnant);
-        Map<Integer, List<Data>> transferInsPregnant = intersection(pregnant, ti);
-        Map<Integer, List<Data>> transferOutsPregnant = intersection(pregnant, to);
+        cohortTracker.setIndicators(indicators);
+        cohortTracker.setPatients(cohorts);
+        cohortTracker.setConcepts(concepts);
+        cohortTracker.setAggregations(aggregations);
+        cohortTracker.setConnection(connection);
+        cohortTracker.setConcepts(concepts);
+        cohortTracker.setEndDate(endDate);
+        cohortTracker.setEncounterTypes(encounterTypes);
+
+        Map<String, Map<Integer, List<Data>>> data = cohortTracker.execute();
+
+        //Map<Integer, List<Data>> cohort = data.get("cohort");
+        Map<Integer, List<Data>> baselineCD4 = data.get("cohort.baselineCD4");
+        Map<Integer, List<Data>> baselineCD4500 = data.get("cohort.baselineCD4500");
+        Map<Integer, List<Data>> transferIns = data.get("cohort.ti");
+        Map<Integer, List<Data>> to = data.get("cohort.to");
+        Map<Integer, List<Data>> stopped = data.get("cohort.stopped");
+        Map<Integer, List<Data>> restarted = data.get("cohort.restarted");
+        Map<Integer, List<Data>> cd4 = data.get("cohort.cd4");
+        Map<Integer, List<Data>> cd4500 = data.get("cohort.cd4500");
+        Map<Integer, List<Data>> visits = data.get("cohort.visits");
+        Map<Integer, List<Data>> dead = data.get("cohort.dead");
+
+        Map<Integer, List<Data>> pregnant = data.get("cohort.pregnant");
+        Map<Integer, List<Data>> baselineCD4Pregnant = data.get("cohort.baselineCD4.pregnant");
+        Map<Integer, List<Data>> baselineCD4Pregnant500 = data.get("cohort.baselineCD4500.pregnant");
+        Map<Integer, List<Data>> transferInsPregnant = data.get("cohort.ti.pregnant");
+        Map<Integer, List<Data>> toPregnant = data.get("cohort.to.pregnant");
+        Map<Integer, List<Data>> stoppedPregnant = data.get("cohort.stopped.pregnant");
+        Map<Integer, List<Data>> restartedPregnant = data.get("cohort.restarted.pregnant");
+        Map<Integer, List<Data>> cd4Pregnant = data.get("cohort.cd4.pregnant");
+        Map<Integer, List<Data>> cd4Pregnant500 = data.get("cohort.cd4500.pregnant");
+        Map<Integer, List<Data>> visitsPregnant = data.get("cohort.visits.pregnant");
+        Map<Integer, List<Data>> deadPregnant = data.get("cohort.dead.pregnant");
 
 
-        Map<Integer, List<Data>> baseCD4 = groupByPerson(filterData(reduceData(withBaseline), max("500")));
-        Map<Integer, List<Data>> baseCD4Pregnant = groupByPerson(filterData(reduceData(withBaselinePregnant), max("500")));
-
-
-        Collection currentCohort = CollectionUtils.subtract(startedArt.keySet(), transferOuts.keySet());
-        Collection currentCohortPregnant = CollectionUtils.subtract(pregnant.keySet(), transferOutsPregnant.keySet());
-
+        Collection currentCohort = CollectionUtils.subtract(startedArt.keySet(), to.keySet());
+        Collection currentCohortPregnant = CollectionUtils.subtract(pregnant.keySet(), toPregnant.keySet());
 
         Map<Integer, List<Data>> artStopped = intersection(stopped, currentCohort);
         Map<Integer, List<Data>> artRestarted = intersection(restarted, currentCohort);
         Map<Integer, List<Data>> artDead = intersection(dead, currentCohort);
 
-        Map<Integer, List<Data>> encountersAfter = groupByPerson(filterAndReduce(encounterEncounters,
-                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohort)));
-        Map<Integer, List<Data>> visitsAfter = groupByPerson(filterAndReduce(visits,
-                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohort)));
 
         Map<Integer, List<Data>> artStoppedPregnant = intersection(stopped, currentCohortPregnant);
-        Map<Integer, List<Data>> artRestartedPregnant = intersection(restarted, currentCohortPregnant);
-        Map<Integer, List<Data>> artDeadPregnant = intersection(dead, currentCohortPregnant);
-
-        Map<Integer, List<Data>> artEncountersAfterPregnant = groupByPerson(filterAndReduce(encounterEncounters,
-                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohortPregnant)));
-        Map<Integer, List<Data>> visitsAfterPregnant = groupByPerson(filterAndReduce(visits,
-                and(onOrAfterQ(quarter), onOrBe4Q(currentQuarter)), hasPatient(currentCohortPregnant)));
+        Map<Integer, List<Data>> artRestartedPregnant = intersection(restartedPregnant, currentCohortPregnant);
+        Map<Integer, List<Data>> artDeadPregnant = intersection(deadPregnant, currentCohortPregnant);
 
 
-        double[] cd4Data = new double[baseCD4.size()];
-        double[] cd4DataPregnant = new double[baseCD4Pregnant.size()];
+        Map<String, List<Integer>> missing = getLost(ending, visits);
+        Map<String, List<Integer>> missingPregnant = getLost(ending, visitsPregnant);
 
-        List<Integer> lost = new ArrayList<>();
-        List<Integer> lost2Followup = new ArrayList<>();
+        List<Integer> lost = missing.get("lost");
+        List<Integer> lostPregnant = missingPregnant.get("lost");
 
-        List<Integer> lostPregnant = new ArrayList<>();
-        List<Integer> lost2FollowupPregnant = new ArrayList<>();
+        List<Integer> lost2Followup = missing.get("lost2Followup");
+        List<Integer> lost2FollowupPregnant = missingPregnant.get("lost2Followup");
+
+        Collection allStopped = CollectionUtils.subtract(artStopped.keySet(), artRestarted.keySet());
+        Collection allStoppedPregnant = CollectionUtils.subtract(artStoppedPregnant.keySet(),
+                artRestartedPregnant.keySet());
+
+
+        Collection currentAlive = CollectionUtils.subtract(currentCohort,
+                CollectionUtils.union(CollectionUtils.union(allStopped, artDead.keySet()),
+                        CollectionUtils.union(lost, lost2Followup)));
+        Collection currentAlivePregnant = CollectionUtils.subtract(currentCohortPregnant,
+                CollectionUtils.union(CollectionUtils.union(allStoppedPregnant, artDeadPregnant.keySet()),
+                        CollectionUtils.union(lostPregnant, lost2FollowupPregnant)));
+
+
+        Map<Integer, List<Data>> artCD4 = intersection(cd4, currentAlive);
+        Map<Integer, List<Data>> artCD4L500 = intersection(cd4500, currentAlive);
+
+        Map<Integer, List<Data>> artCD4Pregnant = intersection(cd4Pregnant, currentAlivePregnant);
+        Map<Integer, List<Data>> artCD4L500Pregnant = intersection(cd4Pregnant500, currentAlivePregnant);
+
+        double[] cd4Data = new double[baselineCD4.size()];
+        double[] cd4DataPregnant = new double[baselineCD4Pregnant.size()];
+
+        double[] cd4AfterData = new double[artCD4L500.size()];
+        double[] cd4AfterDataPregnant = new double[artCD4L500Pregnant.size()];
 
         int i = 0;
         int j = 0;
@@ -1082,61 +1297,16 @@ public class Helper {
         int k = 0;
         int l = 0;
 
-        for (Map.Entry<Integer, List<Data>> d : baseCD4.entrySet()) {
+        for (Map.Entry<Integer, List<Data>> d : baselineCD4.entrySet()) {
             Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
             cd4Data[i++] = Double.valueOf(dt.getValue());
         }
 
-        for (Map.Entry<Integer, List<Data>> d : baseCD4Pregnant.entrySet()) {
+        for (Map.Entry<Integer, List<Data>> d : baselineCD4Pregnant.entrySet()) {
             Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
             cd4DataPregnant[k++] = Double.valueOf(dt.getValue());
         }
 
-
-        /*for (Object e : currentCohort) {
-            Data maxVisit = encountersAfter.get(e).stream().max(Comparator.comparing(Data::getValue)).get();
-            Data maxEncounter = visitsAfter.get(e).stream().max(Comparator.comparing(Data::getEncounterId)).get();
-
-            LocalDate start = StubDate.dateOf(x.getValue());
-            int days = Days.daysBetween(start, end).getDays();
-
-            if (days >= 7 && days < 90) {
-                lost.add(e.getKey());
-            } else if (days >= 90) {
-                lost2Followup.add(e.getKey());
-            }
-
-        }
-
-        for (Map.Entry<Integer, List<Data>> e : artEncountersPregnant.entrySet()) {
-            Data x = e.getValue().stream().max(Comparator.comparing(Data::getEncounterId)).get();
-            LocalDate start = StubDate.dateOf(x.getValue());
-            int days = Days.daysBetween(start, end).getDays();
-
-            if (days >= 7 && days < 90) {
-                lostPregnant.add(e.getKey());
-            } else if (days >= 90) {
-                lost2FollowupPregnant.add(e.getKey());
-            }
-
-        }*/
-
-        Collection allStopped = CollectionUtils.subtract(artStopped.keySet(), artRestarted.keySet());
-        Collection allStoppedPregnant = CollectionUtils.subtract(artStoppedPregnant.keySet(), artRestartedPregnant.keySet());
-
-
-        Collection currentAlive = CollectionUtils.subtract(currentCohort, CollectionUtils.union(CollectionUtils.union(allStopped, artDead.keySet()), CollectionUtils.union(lost, lost2Followup)));
-        Collection currentAlivePregnant = CollectionUtils.subtract(currentCohortPregnant, CollectionUtils.union(CollectionUtils.union(allStoppedPregnant, artDeadPregnant.keySet()), CollectionUtils.union(lostPregnant, lost2FollowupPregnant)));
-
-
-        Map<Integer, List<Data>> artCD4 = intersection(cd4, currentAlive);
-        Map<Integer, List<Data>> artCD4L500 = intersection(groupByPerson(filterData(reduceData(cd4), max("500"))), currentAlive);
-
-        Map<Integer, List<Data>> artCD4Pregnant = intersection(cd4, currentAlivePregnant);
-        Map<Integer, List<Data>> artCD4L500Pregnant = intersection(groupByPerson(filterData(reduceData(cd4), max("500"))), currentAlivePregnant);
-
-        double[] cd4AfterData = new double[artCD4L500.size()];
-        double[] cd4AfterDataPregnant = new double[artCD4L500Pregnant.size()];
 
         for (Map.Entry<Integer, List<Data>> d : artCD4L500.entrySet()) {
             Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
@@ -1148,114 +1318,116 @@ public class Helper {
             cd4AfterDataPregnant[l++] = Double.valueOf(dt.getValue());
         }
 
-        data.put("b2m", localDates.get(0).getMonthOfYear());
-        data.put("b2y", Integer.valueOf(localDates.get(1).toString("yyyy")));
 
-        data.put("b2mf", localDates.get(0).getMonthOfYear());
-        data.put("b2yf", Integer.valueOf(localDates.get(1).toString("yyyy")));
+        result.put("b2m", localDates.get(0).getMonthOfYear());
+        result.put("b2y", Integer.valueOf(localDates.get(1).toString("yyyy")));
 
-        data.put("b3", CollectionUtils.subtract(startedArt.keySet(), transferIns.keySet()).size());
-        data.put("b3f", CollectionUtils.subtract(pregnant.keySet(), transferInsPregnant.keySet()).size());
+        result.put("b2mf", localDates.get(0).getMonthOfYear());
+        result.put("b2yf", Integer.valueOf(localDates.get(1).toString("yyyy")));
 
-        if (withBaseline.size() > 0) {
-            data.put("b4", df.format((double) baseCD4.size() / withBaseline.size()));
+
+        result.put("b3", CollectionUtils.subtract(startedArt.keySet(), transferIns.keySet()).size());
+        result.put("b3f", CollectionUtils.subtract(pregnant.keySet(), transferInsPregnant.keySet()).size());
+
+
+        if (baselineCD4.size() > 0) {
+            result.put("b4", df.format((double) baselineCD4500.size() / baselineCD4.size()));
 
         } else {
-            data.put("b4", "");
+            result.put("b4", "");
         }
 
-        if (withBaselinePregnant.size() > 0) {
-            data.put("b4f", df.format((double) baseCD4Pregnant.size() / withBaselinePregnant.size()));
+        if (baselineCD4Pregnant.size() > 0) {
+            result.put("b4f", df.format((double) baselineCD4Pregnant500.size() / baselineCD4Pregnant.size()));
 
         } else {
-            data.put("b4f", "");
+            result.put("b4f", "");
         }
 
         if (cd4Data.length > 0) {
-            data.put("b5", StatUtils.percentile(cd4Data, 50));
+            result.put("b5", StatUtils.percentile(cd4Data, 50));
         } else {
-            data.put("b5", "");
+            result.put("b5", "");
         }
 
         if (cd4DataPregnant.length > 0) {
-            data.put("b5f", StatUtils.percentile(cd4DataPregnant, 50));
+            result.put("b5f", StatUtils.percentile(cd4DataPregnant, 50));
         } else {
-            data.put("b5f", "");
+            result.put("b5f", "");
         }
 
 
-        data.put("b6", transferIns.size());
-        data.put("b6f", transferInsPregnant.size());
+        result.put("b6", transferIns.size());
+        result.put("b6f", transferInsPregnant.size());
 
-        data.put("b7", transferOuts.size());
-        data.put("b7f", transferOutsPregnant.size());
+        result.put("b7", to.size());
+        result.put("b7f", toPregnant.size());
 
-        data.put("b8", currentCohort.size());
-        data.put("b8f", currentCohortPregnant.size());
+        result.put("b8", currentCohort.size());
+        result.put("b8f", currentCohortPregnant.size());
 
-        data.put("b9", allStopped.size());
-        data.put("b9f", allStoppedPregnant.size());
+        result.put("b9", stopped.size());
+        result.put("b9f", stoppedPregnant.size());
 
-        data.put("b10", artDead.size());
-        data.put("b10f", artDeadPregnant.size());
+        result.put("b10", artDead.size());
+        result.put("b10f", artDeadPregnant.size());
 
-        data.put("b11", lost.size());
-        data.put("b11f", lostPregnant.size());
+        result.put("b11", lost.size());
+        result.put("b11f", lostPregnant.size());
 
-        data.put("b12", lost2Followup.size());
-        data.put("b12f", lost2FollowupPregnant.size());
+        result.put("b12", lost2Followup.size());
+        result.put("b12f", lost2FollowupPregnant.size());
 
-        data.put("b13", currentAlive.size());
-        data.put("b13f", currentAlivePregnant.size());
+        result.put("b13", currentAlive.size());
+        result.put("b13f", currentAlivePregnant.size());
 
         if (currentCohort.size() > 0) {
-            data.put("b14", df.format(currentAlive.size() * 100 / currentCohort.size()));
+            result.put("b14", df.format(currentAlive.size() * 100 / currentCohort.size()));
         } else {
-            data.put("b14", "");
+            result.put("b14", "");
         }
 
         if (currentCohortPregnant.size() > 0) {
-            data.put("b14f", df.format(currentAlivePregnant.size() * 100 / currentCohortPregnant.size()));
+            result.put("b14f", df.format(currentAlivePregnant.size() * 100 / currentCohortPregnant.size()));
 
         } else {
-            data.put("b14f", "");
+            result.put("b14f", "");
 
         }
 
         if (artCD4.size() > 0) {
-            data.put("b15", df.format((double) artCD4L500.size() / artCD4.size()));
+            result.put("b15", df.format((double) artCD4L500.size() / artCD4.size()));
 
         } else {
-            data.put("b15", "");
+            result.put("b15", "");
 
         }
 
         if (artCD4Pregnant.size() > 0) {
-            data.put("b15f", df.format((double) artCD4L500Pregnant.size() / artCD4Pregnant.size()));
+            result.put("b15f", df.format((double) artCD4L500Pregnant.size() / artCD4Pregnant.size()));
 
         } else {
-            data.put("b15f", "");
+            result.put("b15f", "");
 
         }
 
         if (cd4AfterData.length > 0) {
-            data.put("b16", StatUtils.percentile(cd4AfterData, 50));
+            result.put("b16", StatUtils.percentile(cd4AfterData, 50));
 
         } else {
-            data.put("b16", "");
+            result.put("b16", "");
 
         }
 
         if (cd4AfterDataPregnant.length > 0) {
-            data.put("b16f", StatUtils.percentile(cd4AfterDataPregnant, 50));
+            result.put("b16f", StatUtils.percentile(cd4AfterDataPregnant, 50));
 
         } else {
-            data.put("b16f", "");
+            result.put("b16f", "");
 
         }
-        return data;
+        return result;
     }
-
 
     public static Map<String, Integer> getLostPatients(Connection connection, String cohort, String endDate) throws SQLException {
         String sql = "SELECT\n" +
@@ -1471,6 +1643,31 @@ public class Helper {
         }
         rs.close();
         stmt.close();
+        return result;
+    }
+
+    public static Map<String, List<Integer>> getLost(LocalDate end, Map<Integer, List<Data>> visits) {
+        Map<String, List<Integer>> result = new HashMap<>();
+        List<Integer> lost = new ArrayList<>();
+        List<Integer> lost2Followup = new ArrayList<>();
+        for (Map.Entry<Integer, List<Data>> c : visits.entrySet()) {
+            Data maxVisit = c.getValue().stream().max(Comparator.comparing(Data::getValue)).get();
+
+            LocalDate start = StubDate.dateOf(maxVisit.getValue());
+
+            if (start.compareTo(end) > 0) {
+                int days = Days.daysBetween(start, end).getDays();
+                if (days >= 7 && days < 90) {
+                    lost.add(c.getKey());
+                } else if (days >= 90) {
+                    lost2Followup.add(c.getKey());
+                }
+            }
+        }
+
+        result.put("lost", lost);
+        result.put("lost2Followup", lost2Followup);
+
         return result;
     }
 

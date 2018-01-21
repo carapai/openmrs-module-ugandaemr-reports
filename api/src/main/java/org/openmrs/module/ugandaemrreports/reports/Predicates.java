@@ -2,6 +2,7 @@ package org.openmrs.module.ugandaemrreports.reports;
 
 import org.omg.CORBA.PUBLIC_MEMBER;
 import org.openmrs.module.ugandaemrreports.common.Data;
+import org.openmrs.module.ugandaemrreports.common.SummarizedEncounter;
 import org.openmrs.module.ugandaemrreports.common.SummarizedObs;
 
 import java.util.Arrays;
@@ -19,7 +20,15 @@ public class Predicates {
         return p -> p.getYq().compareTo(quarter) < 0;
     }
 
+    public static Predicate<SummarizedEncounter> be4EQ(Integer quarter) {
+        return p -> p.getYq().compareTo(quarter) < 0;
+    }
+
     public static Predicate<SummarizedObs> onOrBe4Q(Integer quarter) {
+        return p -> p.getYq().compareTo(quarter) <= 0;
+    }
+
+    public static Predicate<SummarizedEncounter> onOrBe4Q1(Integer quarter) {
         return p -> p.getYq().compareTo(quarter) <= 0;
     }
 
@@ -27,7 +36,15 @@ public class Predicates {
         return p -> Objects.equals(p.getYq(), quarter);
     }
 
+    public static Predicate<SummarizedEncounter> inTheEQ(Integer quarter) {
+        return p -> Objects.equals(p.getYq(), quarter);
+    }
+
     public static Predicate<SummarizedObs> onOrAfterQ(Integer quarter) {
+        return p -> p.getYq().compareTo(quarter) >= 0;
+    }
+
+    public static Predicate<SummarizedEncounter> onOrAfterQ1(Integer quarter) {
         return p -> p.getYq().compareTo(quarter) >= 0;
     }
 
@@ -59,12 +76,28 @@ public class Predicates {
         return p -> Arrays.asList(encounterTypes).contains(p.getEncounterType());
     }
 
+    public static Predicate<SummarizedEncounter> hasEncounterType2(Integer... encounterTypes) {
+        return p -> Arrays.asList(encounterTypes).contains(p.getEncounterType());
+    }
+
     public static Predicate<SummarizedObs> hasConcepts(Integer... concepts) {
         return p -> Arrays.asList(concepts).contains(p.getConcept());
     }
 
+    public static Predicate<Data> hasConcepts1(Integer... concepts) {
+        return p -> Arrays.asList(concepts).contains(p.getConcept());
+    }
+
+    public static Predicate<Data> hasNoConcepts1(Integer... concepts) {
+        return p -> !Arrays.asList(concepts).contains(p.getConcept());
+    }
+
     public static Predicate<SummarizedObs> hasVal(String... val) {
         return p -> Arrays.asList(val).contains(p.getVal());
+    }
+
+    public static Predicate<Data> hasVal1(String... val) {
+        return p -> Arrays.asList(val).contains(p.getValue());
     }
 
     public static Predicate<Data> hasAnswers(String... answers) {
@@ -75,6 +108,10 @@ public class Predicates {
         return p -> p.getAge().compareTo(age) < 0;
     }
 
+    public static Predicate<Data> maxEncounter(Integer age) {
+        return p -> p.getAge().compareTo(age) > 0;
+    }
+
     public static Predicate<Data> afterAge(Integer age) {
         return p -> p.getAge().compareTo(age) > 0;
     }
@@ -82,6 +119,14 @@ public class Predicates {
     @SafeVarargs
     public static Predicate<SummarizedObs> and(Predicate<SummarizedObs>... predicates) {
         Predicate<SummarizedObs> p = predicates[0];
+        for (int i = 1; i < predicates.length; i++) {
+            p = p.and(predicates[i]);
+        }
+        return p;
+    }
+    @SafeVarargs
+    public static Predicate<SummarizedEncounter> and2(Predicate<SummarizedEncounter>... predicates) {
+        Predicate<SummarizedEncounter> p = predicates[0];
         for (int i = 1; i < predicates.length; i++) {
             p = p.and(predicates[i]);
         }

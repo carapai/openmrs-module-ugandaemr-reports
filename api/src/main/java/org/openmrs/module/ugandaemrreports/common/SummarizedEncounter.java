@@ -13,14 +13,14 @@ public class SummarizedEncounter {
     private Integer m;
     private Integer ym;
     private Integer yq;
-    private List<EncounterData> ageGender;
+    private List<Data> ageGender;
     private String obs;
     private Integer total;
 
     public SummarizedEncounter() {
     }
 
-    public SummarizedEncounter(Integer encounterType, Integer y, Integer m, Integer q, Integer ym, Integer yq, List<EncounterData> ageGender,String obs, Integer total) {
+    public SummarizedEncounter(Integer encounterType, Integer y, Integer m, Integer q, Integer ym, Integer yq, List<Data> ageGender,String obs, Integer total) {
         this.encounterType = encounterType;
         this.y = y;
         this.q = q;
@@ -81,11 +81,11 @@ public class SummarizedEncounter {
         this.yq = yq;
     }
 
-    public List<EncounterData> getAgeGender() {
+    public List<Data> getAgeGender() {
         return ageGender;
     }
 
-    public void setAgeGender(List<EncounterData> ageGender) {
+    public void setAgeGender(List<Data> ageGender) {
         this.ageGender = ageGender;
     }
 

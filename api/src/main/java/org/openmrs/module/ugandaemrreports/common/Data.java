@@ -1,21 +1,30 @@
 package org.openmrs.module.ugandaemrreports.common;
 
+import java.util.Date;
+
 public class Data {
     private Integer patientId;
     private Integer obsId;
     private Integer encounterId;
     private String gender;
+    private Date dob;
     private Integer age;
     private Integer concept;
     private String value;
     private Integer obsGroupId;
     private Integer voided;
+    private Integer encounterType;
+    private Date encounterDate;
 
-    public Data(Integer patientId, Integer obsId, Integer encounterId, String gender, Integer age, Integer concept, String value, Integer obsGroupId, Integer voided) {
+    public Data() {
+    }
+
+    public Data(Integer patientId, Integer obsId, Integer encounterId, String gender, Date dob, Integer age, Integer concept, String value, Integer obsGroupId, Integer voided) {
         this.patientId = patientId;
         this.obsId = obsId;
         this.encounterId = encounterId;
         this.gender = gender;
+        this.dob = dob;
         this.age = age;
         this.concept = concept;
         this.value = value;
@@ -95,4 +104,27 @@ public class Data {
         this.voided = voided;
     }
 
+    public Date getDob() {
+        return dob;
+    }
+
+    public void setDob(Date dob) {
+        this.dob = dob;
+    }
+
+    public Integer getEncounterType() {
+        return encounterType;
+    }
+
+    public void setEncounterType(Integer encounterType) {
+        this.encounterType = encounterType;
+    }
+
+    public Date getEncounterDate() {
+        return encounterDate;
+    }
+
+    public void setEncounterDate(Date encounterDate) {
+        this.encounterDate = encounterDate;
+    }
 }
