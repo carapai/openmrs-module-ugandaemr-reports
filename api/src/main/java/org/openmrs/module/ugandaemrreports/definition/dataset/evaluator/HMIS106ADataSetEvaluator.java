@@ -52,25 +52,26 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             Integer summaryEncounterType = 8;
             Integer encounterEncounterType = 9;
 
-            List<LocalDate> q1 = Periods.subtractQuarters(date, 2);
+            List<LocalDate> allQuarters = Arrays.asList(
+                    Periods.subtractQuarters(date, 2).get(1),
+                    Periods.subtractQuarters(date, 4).get(1),
+                    Periods.subtractQuarters(date, 8).get(1),
+                    Periods.subtractQuarters(date, 12).get(1),
+                    Periods.subtractQuarters(date, 16).get(1),
+                    Periods.subtractQuarters(date, 20).get(1),
+                    Periods.subtractQuarters(date, 24).get(1)
+            );
+
+            /*List<LocalDate> q1 = ;
             List<LocalDate> q2 = Periods.subtractQuarters(date, 4);
             List<LocalDate> q3 = Periods.subtractQuarters(date, 8);
             List<LocalDate> q4 = Periods.subtractQuarters(date, 12);
             List<LocalDate> q5 = Periods.subtractQuarters(date, 16);
             List<LocalDate> q6 = Periods.subtractQuarters(date, 20);
-            List<LocalDate> q7 = Periods.subtractQuarters(date, 24);
+            List<LocalDate> q7 = Periods.subtractQuarters(date, 24);*/
 
 
             String encounterQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter, "encounter_type IN(8,9)");
-
-            /*String numericConcepts1 = "concept IN(99604,99604,5497,730,99071)";
-            String dateConcepts1 = "concept IN(99161,99160,90299,5096,99165,99084,99085)";
-            String codedConcepts1 = "concept IN(99072,99603,90306,5240,90209,99132)";
-            String textConcepts1 = "concept IN(90206,90211)";
-
-            String numericConcepts2 = "concept IN(99037,99033,90236,5090,99082)";
-            String dateConcepts2 = "concept IN(99160,90217)";
-            String codedConcepts2 = "concept IN(99110,90315,99072,99603,90041,90012,90200,90221,90216,99030,68,460)";*/
 
             String numericConcepts1 = "concept IN(99604,99604)";
             String dateConcepts1 = "concept IN(99161,90299)";
@@ -96,9 +97,6 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
 
             List<SummarizedObs> numericObsBe4Q = getSummarizedObs(connection, "value_numeric", numericQueryB4Q);
             List<SummarizedObs> dateObsBe4Q = getSummarizedObs(connection, "value_datetime", dateQueryB4Q);
-            /*List<SummarizedObs> codedObsBe4Q = getSummarizedObs(connection, "value_coded", codedConcepts1);
-            List<SummarizedObs> textObsBe4Q = getSummarizedObs(connection, "value_text", textConcepts1);*/
-
             List<SummarizedObs> numericObsQ = getSummarizedObs(connection, "value_numeric", numericQueryQ);
             List<SummarizedObs> dateObsQ = getSummarizedObs(connection, "value_datetime", dateQueryQ);
             List<SummarizedObs> codedObsQ = getSummarizedObs(connection, "value_coded", codedQueryQ);
@@ -240,57 +238,13 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
 
             List<SummarizedObs> all = joinSummarizedObs(dateObsBe4Q, deadPeople);
 
-            Map<String, Object> data1 = get1061BCohorts(lastDate, q1, all, connection);
-            Map<String, Object> data2 = get1061BCohorts(lastDate, q2, all, connection);
-            Map<String, Object> data3 = get1061BCohorts(lastDate, q3, all, connection);
-            Map<String, Object> data4 = get1061BCohorts(lastDate, q4, all, connection);
-            Map<String, Object> data5 = get1061BCohorts(lastDate, q4, all, connection);
-            Map<String, Object> data6 = get1061BCohorts(lastDate, q5, all, connection);
-            Map<String, Object> data7 = get1061BCohorts(lastDate, q7, all, connection);
+            Map<String, Object> data1 = get1061BCohorts(lastDate, allQuarters, all, connection);
 
-            System.out.println(data1);
-            System.out.println(data2);
-            System.out.println(data3);
-            System.out.println(data4);
-            System.out.println(data5);
-            System.out.println(data6);
-            System.out.println(data7);
 
             for (Map.Entry<String, Object> data : data1.entrySet()) {
-                String label = "1" + data.getKey();
+                String label = data.getKey();
                 dataSet.addData(new DataSetColumn(label, label, Object.class), data.getValue());
             }
-
-            for (Map.Entry<String, Object> data : data2.entrySet()) {
-                String label = "2" + data.getKey();
-                dataSet.addData(new DataSetColumn(label, label, Object.class), data.getValue());
-            }
-
-            for (Map.Entry<String, Object> data : data3.entrySet()) {
-                String label = "3" + data.getKey();
-                dataSet.addData(new DataSetColumn(label, label, Object.class), data.getValue());
-            }
-
-            for (Map.Entry<String, Object> data : data4.entrySet()) {
-                String label = "4" + data.getKey();
-                dataSet.addData(new DataSetColumn(label, label, Object.class), data.getValue());
-            }
-
-            for (Map.Entry<String, Object> data : data5.entrySet()) {
-                String label = "5" + data.getKey();
-                dataSet.addData(new DataSetColumn(label, label, Object.class), data.getValue());
-            }
-
-            for (Map.Entry<String, Object> data : data6.entrySet()) {
-                String label = "6" + data.getKey();
-                dataSet.addData(new DataSetColumn(label, label, Object.class), data.getValue());
-            }
-
-            for (Map.Entry<String, Object> data : data7.entrySet()) {
-                String label = "7" + data.getKey();
-                dataSet.addData(new DataSetColumn(label, label, Object.class), data.getValue());
-            }
-
         } catch (Exception e) {
             System.out.println("Some silly error is there  " + e.getMessage());
         }

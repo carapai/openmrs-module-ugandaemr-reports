@@ -125,7 +125,9 @@ public class CohortTracker {
         if (patients != null && patients.size() > 0) {
             List<String> st = new ArrayList<>();
             for (Set<Integer> ps : getPatients().values()) {
-                st.add(Joiner.on(",").join(ps));
+                if (ps.size() > 0) {
+                    st.add(Joiner.on(",").join(ps));
+                }
             }
             String patientString = Joiner.on(",").join(st);
             query += String.format(" AND e.patient_id IN(%s) ", patientString);

@@ -1130,6 +1130,17 @@ public class Helper {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
 
+    public static List<Data> subtract(List<Data> l1, Collection l2) {
+
+        Map<Integer, List<Data>> m1 = groupByPerson(l1);
+
+        Collection difference = CollectionUtils.subtract(m1.keySet(), l2);
+
+        return reduceData(m1.entrySet().stream()
+                .filter(map -> difference.contains(map.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+    }
+
     public static List<Data> intersection(List<Data> l1, List<Data> l2) {
         Map<Integer, List<Data>> m1 = groupByPerson(l1);
         Map<Integer, List<Data>> m2 = groupByPerson(l2);
@@ -1148,6 +1159,13 @@ public class Helper {
 
         return m1.entrySet().stream()
                 .filter(map -> intersection.contains(map.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    public static Map<Integer, List<Data>> subtract(Map<Integer, List<Data>> m1, Collection intersection) {
+
+        return m1.entrySet().stream()
+                .filter(map -> !intersection.contains(map.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -1181,14 +1199,20 @@ public class Helper {
 
         DecimalFormat df = new DecimalFormat("###.##");
 
-        Integer quarter = getQuarter(localDates);
-        Map<Integer, List<Data>> startedArt = groupByPerson(filterAndReduce(baseData, and(hasConcepts(99161),
-                inTheQ(quarter))));
-
         Map<Integer, List<Data>> deadPatients = groupByPerson(filterAndReduce(baseData, hasConcepts(0)));
 
-        if (startedArt.keySet().size() > 0) {
-            cohorts.put(String.valueOf("cohort"), startedArt.keySet());
+        int beginDates = 0;
+        for (LocalDate localDate : localDates) {
+            Integer quarter = getQuarter(localDate);
+            Map<Integer, List<Data>> startedArt = groupByPerson(filterAndReduce(baseData, and(hasConcepts(99161),
+                    inTheQ(quarter))));
+
+            if (startedArt.keySet().size() > 0) {
+                cohorts.put(String.valueOf("cohort" + (beginDates + 1)), startedArt.keySet());
+            } else {
+                cohorts.put(String.valueOf("cohort" + (beginDates + 1)), new HashSet<>());
+            }
+            beginDates++;
         }
 
         Map<String, Predicate<Data>> indicators = new HashMap<>();
@@ -1219,212 +1243,229 @@ public class Helper {
 
         Map<String, Map<Integer, List<Data>>> data = cohortTracker.execute();
 
-        //Map<Integer, List<Data>> cohort = data.get("cohort");
-        Map<Integer, List<Data>> baselineCD4 = data.get("cohort.baselineCD4");
-        Map<Integer, List<Data>> baselineCD4500 = data.get("cohort.baselineCD4500");
-        Map<Integer, List<Data>> transferIns = data.get("cohort.ti");
-        Map<Integer, List<Data>> to = data.get("cohort.to");
-        Map<Integer, List<Data>> stopped = data.get("cohort.stopped");
-        Map<Integer, List<Data>> restarted = data.get("cohort.restarted");
-        Map<Integer, List<Data>> cd4 = data.get("cohort.cd4");
-        Map<Integer, List<Data>> cd4500 = data.get("cohort.cd4500");
-        Map<Integer, List<Data>> visits = data.get("cohort.visits");
-        Map<Integer, List<Data>> dead = data.get("cohort.dead");
+        for (int current = 0; current < localDates.size(); current++) {
+            int index = current + 1;
+            Map<Integer, List<Data>> cohort = data.get("cohort" + index);
+            Map<Integer, List<Data>> baselineCD4 = data.get("cohort" + index + ".baselineCD4");
+            Map<Integer, List<Data>> baselineCD4500 = data.get("cohort" + index + ".baselineCD4500");
+            Map<Integer, List<Data>> transferIns = data.get("cohort" + index + ".ti");
+            Map<Integer, List<Data>> to = data.get("cohort" + index + ".to");
+            Map<Integer, List<Data>> stopped = data.get("cohort" + index + ".stopped");
+            Map<Integer, List<Data>> restarted = data.get("cohort" + index + ".restarted");
+            Map<Integer, List<Data>> cd4 = data.get("cohort" + index + ".cd4");
+            Map<Integer, List<Data>> cd4500 = data.get("cohort" + index + ".cd4500");
+            Map<Integer, List<Data>> visits = data.get("cohort" + index + ".visits");
+            Map<Integer, List<Data>> dead = data.get("cohort" + index + ".dead");
 
-        Map<Integer, List<Data>> pregnant = data.get("cohort.pregnant");
-        Map<Integer, List<Data>> baselineCD4Pregnant = data.get("cohort.baselineCD4.pregnant");
-        Map<Integer, List<Data>> baselineCD4Pregnant500 = data.get("cohort.baselineCD4500.pregnant");
-        Map<Integer, List<Data>> transferInsPregnant = data.get("cohort.ti.pregnant");
-        Map<Integer, List<Data>> toPregnant = data.get("cohort.to.pregnant");
-        Map<Integer, List<Data>> stoppedPregnant = data.get("cohort.stopped.pregnant");
-        Map<Integer, List<Data>> restartedPregnant = data.get("cohort.restarted.pregnant");
-        Map<Integer, List<Data>> cd4Pregnant = data.get("cohort.cd4.pregnant");
-        Map<Integer, List<Data>> cd4Pregnant500 = data.get("cohort.cd4500.pregnant");
-        Map<Integer, List<Data>> visitsPregnant = data.get("cohort.visits.pregnant");
-        Map<Integer, List<Data>> deadPregnant = data.get("cohort.dead.pregnant");
+            Map<Integer, List<Data>> pregnant = data.get("cohort" + index + ".pregnant");
+            Map<Integer, List<Data>> baselineCD4Pregnant = data.get("cohort" + index + ".baselineCD4.pregnant");
+            Map<Integer, List<Data>> baselineCD4Pregnant500 = data.get("cohort" + index + ".baselineCD4500.pregnant");
+            Map<Integer, List<Data>> transferInsPregnant = data.get("cohort" + index + ".ti.pregnant");
+            Map<Integer, List<Data>> toPregnant = data.get("cohort" + index + ".to.pregnant");
+            Map<Integer, List<Data>> stoppedPregnant = data.get("cohort" + index + ".stopped.pregnant");
+            Map<Integer, List<Data>> restartedPregnant = data.get("cohort" + index + ".restarted.pregnant");
+            Map<Integer, List<Data>> cd4Pregnant = data.get("cohort" + index + ".cd4.pregnant");
+            Map<Integer, List<Data>> cd4Pregnant500 = data.get("cohort" + index + ".cd4500.pregnant");
+            Map<Integer, List<Data>> visitsPregnant = data.get("cohort" + index + ".visits.pregnant");
+            Map<Integer, List<Data>> deadPregnant = data.get("cohort" + index + ".dead.pregnant");
 
+            Collection startedAtFacility = CollectionUtils.subtract(cohort.keySet(), transferIns.keySet());
+            Collection startedAtFacilityPregnant = CollectionUtils.subtract(pregnant.keySet(), transferInsPregnant.keySet());
 
-        Collection currentCohort = CollectionUtils.subtract(startedArt.keySet(), to.keySet());
-        Collection currentCohortPregnant = CollectionUtils.subtract(pregnant.keySet(), toPregnant.keySet());
+            Collection currentCohort = CollectionUtils.subtract(cohort.keySet(), to.keySet());
+            Collection currentCohortPregnant = CollectionUtils.subtract(pregnant.keySet(), toPregnant.keySet());
 
-        Map<Integer, List<Data>> artStopped = intersection(stopped, currentCohort);
-        Map<Integer, List<Data>> artRestarted = intersection(restarted, currentCohort);
-        Map<Integer, List<Data>> artDead = intersection(dead, currentCohort);
+            Map<Integer, List<Data>> startedAtFacilityBaselineCD4 = intersection(baselineCD4, startedAtFacility);
+            Map<Integer, List<Data>> startedAtFacilityPregnantBaselineCD4 = intersection(baselineCD4Pregnant,
+                    startedAtFacilityPregnant);
 
+            Map<Integer, List<Data>> startedAtFacilityBaselineCD4500 = intersection(baselineCD4500, startedAtFacility);
+            Map<Integer, List<Data>> startedAtFacilityPregnantBaselineCD4500 = intersection(baselineCD4Pregnant500,
+                    startedAtFacilityPregnant);
 
-        Map<Integer, List<Data>> artStoppedPregnant = intersection(stopped, currentCohortPregnant);
-        Map<Integer, List<Data>> artRestartedPregnant = intersection(restartedPregnant, currentCohortPregnant);
-        Map<Integer, List<Data>> artDeadPregnant = intersection(deadPregnant, currentCohortPregnant);
+            Collection artStopped = CollectionUtils.intersection(stopped.keySet(), currentCohort);
+            Collection artRestarted = CollectionUtils.intersection(restarted.keySet(), currentCohort);
+            Collection artDead = CollectionUtils.intersection(dead.keySet(), currentCohort);
 
+            Collection artStoppedPregnant = CollectionUtils.intersection(stoppedPregnant.keySet(), currentCohortPregnant);
+            Collection artRestartedPregnant = CollectionUtils.intersection(restartedPregnant.keySet(), currentCohortPregnant);
+            Collection artDeadPregnant = CollectionUtils.intersection(deadPregnant.keySet(), currentCohortPregnant);
 
-        Map<String, List<Integer>> missing = getLost(ending, visits);
-        Map<String, List<Integer>> missingPregnant = getLost(ending, visitsPregnant);
+            Collection allStopped = CollectionUtils.subtract(artStopped, artRestarted);
+            Collection allStoppedPregnant = CollectionUtils.subtract(artStoppedPregnant, artRestartedPregnant);
 
-        List<Integer> lost = missing.get("lost");
-        List<Integer> lostPregnant = missingPregnant.get("lost");
-
-        List<Integer> lost2Followup = missing.get("lost2Followup");
-        List<Integer> lost2FollowupPregnant = missingPregnant.get("lost2Followup");
-
-        Collection allStopped = CollectionUtils.subtract(artStopped.keySet(), artRestarted.keySet());
-        Collection allStoppedPregnant = CollectionUtils.subtract(artStoppedPregnant.keySet(),
-                artRestartedPregnant.keySet());
-
-
-        Collection currentAlive = CollectionUtils.subtract(currentCohort,
-                CollectionUtils.union(CollectionUtils.union(allStopped, artDead.keySet()),
-                        CollectionUtils.union(lost, lost2Followup)));
-        Collection currentAlivePregnant = CollectionUtils.subtract(currentCohortPregnant,
-                CollectionUtils.union(CollectionUtils.union(allStoppedPregnant, artDeadPregnant.keySet()),
-                        CollectionUtils.union(lostPregnant, lost2FollowupPregnant)));
+            Collection stoppedAndDead = CollectionUtils.union(allStopped, artDead);
+            Collection stoppedAndDeadP = CollectionUtils.union(allStoppedPregnant, artDeadPregnant);
 
 
-        Map<Integer, List<Data>> artCD4 = intersection(cd4, currentAlive);
-        Map<Integer, List<Data>> artCD4L500 = intersection(cd4500, currentAlive);
+            Map<String, List<Integer>> missing = getLost(ending, intersection(visits, currentCohort), stoppedAndDead);
+            Map<String, List<Integer>> missingPregnant = getLost(ending, intersection(visitsPregnant, currentCohort), stoppedAndDeadP);
 
-        Map<Integer, List<Data>> artCD4Pregnant = intersection(cd4Pregnant, currentAlivePregnant);
-        Map<Integer, List<Data>> artCD4L500Pregnant = intersection(cd4Pregnant500, currentAlivePregnant);
+            List<Integer> lost = missing.get("lost");
+            List<Integer> lostPregnant = missingPregnant.get("lost");
 
-        double[] cd4Data = new double[baselineCD4.size()];
-        double[] cd4DataPregnant = new double[baselineCD4Pregnant.size()];
-
-        double[] cd4AfterData = new double[artCD4L500.size()];
-        double[] cd4AfterDataPregnant = new double[artCD4L500Pregnant.size()];
-
-        int i = 0;
-        int j = 0;
-
-        int k = 0;
-        int l = 0;
-
-        for (Map.Entry<Integer, List<Data>> d : baselineCD4.entrySet()) {
-            Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
-            cd4Data[i++] = Double.valueOf(dt.getValue());
-        }
-
-        for (Map.Entry<Integer, List<Data>> d : baselineCD4Pregnant.entrySet()) {
-            Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
-            cd4DataPregnant[k++] = Double.valueOf(dt.getValue());
-        }
+            List<Integer> lost2Followup = missing.get("lost2Followup");
+            List<Integer> lost2FollowupPregnant = missingPregnant.get("lost2Followup");
 
 
-        for (Map.Entry<Integer, List<Data>> d : artCD4L500.entrySet()) {
-            Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
-            cd4AfterData[j++] = Double.valueOf(dt.getValue());
-        }
+            Collection lostAndLost2Followup = CollectionUtils.union(lost, lost2Followup);
+            Collection toSubtract = CollectionUtils.union(stoppedAndDead, lostAndLost2Followup);
 
-        for (Map.Entry<Integer, List<Data>> d : artCD4L500Pregnant.entrySet()) {
-            Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
-            cd4AfterDataPregnant[l++] = Double.valueOf(dt.getValue());
-        }
+            Collection lostAndLost2FollowupP = CollectionUtils.union(lostPregnant, lost2FollowupPregnant);
+            Collection toSubtractP = CollectionUtils.union(stoppedAndDeadP, lostAndLost2FollowupP);
 
-
-        result.put("b2m", localDates.get(0).getMonthOfYear());
-        result.put("b2y", Integer.valueOf(localDates.get(1).toString("yyyy")));
-
-        result.put("b2mf", localDates.get(0).getMonthOfYear());
-        result.put("b2yf", Integer.valueOf(localDates.get(1).toString("yyyy")));
+            Collection currentAlive = CollectionUtils.subtract(currentCohort, toSubtract);
+            Collection currentAlivePregnant = CollectionUtils.subtract(currentCohortPregnant, toSubtractP);
 
 
-        result.put("b3", CollectionUtils.subtract(startedArt.keySet(), transferIns.keySet()).size());
-        result.put("b3f", CollectionUtils.subtract(pregnant.keySet(), transferInsPregnant.keySet()).size());
+            Map<Integer, List<Data>> artCD4 = intersection(cd4, currentAlive);
+            Map<Integer, List<Data>> artCD4L500 = intersection(cd4500, currentAlive);
+
+            Map<Integer, List<Data>> artCD4Pregnant = intersection(cd4Pregnant, currentAlivePregnant);
+            Map<Integer, List<Data>> artCD4L500Pregnant = intersection(cd4Pregnant500, currentAlivePregnant);
 
 
-        if (baselineCD4.size() > 0) {
-            result.put("b4", df.format((double) baselineCD4500.size() / baselineCD4.size()));
+            double[] cd4Data = new double[startedAtFacilityBaselineCD4.size()];
+            double[] cd4DataPregnant = new double[startedAtFacilityPregnantBaselineCD4.size()];
 
-        } else {
-            result.put("b4", "");
-        }
+            double[] cd4AfterData = new double[artCD4.size()];
+            double[] cd4AfterDataPregnant = new double[artCD4Pregnant.size()];
 
-        if (baselineCD4Pregnant.size() > 0) {
-            result.put("b4f", df.format((double) baselineCD4Pregnant500.size() / baselineCD4Pregnant.size()));
+            int i = 0;
+            int j = 0;
 
-        } else {
-            result.put("b4f", "");
-        }
+            int k = 0;
+            int l = 0;
 
-        if (cd4Data.length > 0) {
-            result.put("b5", StatUtils.percentile(cd4Data, 50));
-        } else {
-            result.put("b5", "");
-        }
+            for (Map.Entry<Integer, List<Data>> d : startedAtFacilityBaselineCD4.entrySet()) {
+                Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
+                cd4Data[i++] = Double.valueOf(dt.getValue());
+            }
 
-        if (cd4DataPregnant.length > 0) {
-            result.put("b5f", StatUtils.percentile(cd4DataPregnant, 50));
-        } else {
-            result.put("b5f", "");
-        }
+            for (Map.Entry<Integer, List<Data>> d : startedAtFacilityPregnantBaselineCD4.entrySet()) {
+                Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
+                cd4DataPregnant[k++] = Double.valueOf(dt.getValue());
+            }
 
 
-        result.put("b6", transferIns.size());
-        result.put("b6f", transferInsPregnant.size());
+            for (Map.Entry<Integer, List<Data>> d : artCD4.entrySet()) {
+                Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
+                cd4AfterData[j++] = Double.valueOf(dt.getValue());
+            }
 
-        result.put("b7", to.size());
-        result.put("b7f", toPregnant.size());
+            for (Map.Entry<Integer, List<Data>> d : artCD4Pregnant.entrySet()) {
+                Data dt = d.getValue().stream().max(comparing(Data::getEncounterId)).get();
+                cd4AfterDataPregnant[l++] = Double.valueOf(dt.getValue());
+            }
 
-        result.put("b8", currentCohort.size());
-        result.put("b8f", currentCohortPregnant.size());
 
-        result.put("b9", stopped.size());
-        result.put("b9f", stoppedPregnant.size());
+            result.put(index + "b2m", localDates.get(current).getMonthOfYear());
+            result.put(index + "b2y", Integer.valueOf(localDates.get(current).toString("yyyy")));
 
-        result.put("b10", artDead.size());
-        result.put("b10f", artDeadPregnant.size());
+            result.put(index + "b2mf", localDates.get(current).getMonthOfYear());
+            result.put(index + "b2yf", Integer.valueOf(localDates.get(current).toString("yyyy")));
 
-        result.put("b11", lost.size());
-        result.put("b11f", lostPregnant.size());
 
-        result.put("b12", lost2Followup.size());
-        result.put("b12f", lost2FollowupPregnant.size());
+            result.put(index + "b3", startedAtFacility.size());
+            result.put(index + "b3f", startedAtFacilityPregnant.size());
 
-        result.put("b13", currentAlive.size());
-        result.put("b13f", currentAlivePregnant.size());
 
-        if (currentCohort.size() > 0) {
-            result.put("b14", df.format(currentAlive.size() * 100 / currentCohort.size()));
-        } else {
-            result.put("b14", "");
-        }
+            if (startedAtFacilityBaselineCD4.size() > 0) {
+                result.put(index + "b4", df.format((double) startedAtFacilityBaselineCD4500.size() / startedAtFacilityBaselineCD4.size()));
 
-        if (currentCohortPregnant.size() > 0) {
-            result.put("b14f", df.format(currentAlivePregnant.size() * 100 / currentCohortPregnant.size()));
+            } else {
+                result.put(index + "b4", "");
+            }
 
-        } else {
-            result.put("b14f", "");
+            if (startedAtFacilityPregnantBaselineCD4.size() > 0) {
+                result.put(index + "b4f", df.format((double) startedAtFacilityPregnantBaselineCD4500.size() / startedAtFacilityPregnantBaselineCD4.size()));
 
-        }
+            } else {
+                result.put(index + "b4f", "");
+            }
 
-        if (artCD4.size() > 0) {
-            result.put("b15", df.format((double) artCD4L500.size() / artCD4.size()));
+            if (cd4Data.length > 0) {
+                result.put(index + "b5", StatUtils.percentile(cd4Data, 50));
+            } else {
+                result.put(index + "b5", "");
+            }
 
-        } else {
-            result.put("b15", "");
+            if (cd4DataPregnant.length > 0) {
+                result.put(index + "b5f", StatUtils.percentile(cd4DataPregnant, 50));
+            } else {
+                result.put(index + "b5f", "");
+            }
 
-        }
 
-        if (artCD4Pregnant.size() > 0) {
-            result.put("b15f", df.format((double) artCD4L500Pregnant.size() / artCD4Pregnant.size()));
+            result.put(index + "b6", transferIns.size());
+            result.put(index + "b6f", transferInsPregnant.size());
 
-        } else {
-            result.put("b15f", "");
+            result.put(index + "b7", to.size());
+            result.put(index + "b7f", toPregnant.size());
 
-        }
+            result.put(index + "b8", currentCohort.size());
+            result.put(index + "b8f", currentCohortPregnant.size());
 
-        if (cd4AfterData.length > 0) {
-            result.put("b16", StatUtils.percentile(cd4AfterData, 50));
+            result.put(index + "b9", stopped.size());
+            result.put(index + "b9f", stoppedPregnant.size());
 
-        } else {
-            result.put("b16", "");
+            result.put(index + "b10", artDead.size());
+            result.put(index + "b10f", artDeadPregnant.size());
 
-        }
+            result.put(index + "b11", lost.size());
+            result.put(index + "b11f", lostPregnant.size());
 
-        if (cd4AfterDataPregnant.length > 0) {
-            result.put("b16f", StatUtils.percentile(cd4AfterDataPregnant, 50));
+            result.put(index + "b12", lost2Followup.size());
+            result.put(index + "b12f", lost2FollowupPregnant.size());
 
-        } else {
-            result.put("b16f", "");
+            result.put(index + "b13", currentAlive.size());
+            result.put(index + "b13f", currentAlivePregnant.size());
 
+            if (currentCohort.size() > 0) {
+                result.put(index + "b14", df.format(currentAlive.size() * 100 / currentCohort.size()));
+            } else {
+                result.put(index + "b14", "");
+            }
+
+            if (currentCohortPregnant.size() > 0) {
+                result.put(index + "b14f", df.format(currentAlivePregnant.size() * 100 / currentCohortPregnant.size()));
+
+            } else {
+                result.put(index + "b14f", "");
+
+            }
+
+            if (artCD4.size() > 0) {
+                result.put(index + "b15", df.format((double) artCD4L500.size() / artCD4.size()));
+
+            } else {
+                result.put(index + "b15", "");
+
+            }
+
+            if (artCD4Pregnant.size() > 0) {
+                result.put(index + "b15f", df.format((double) artCD4L500Pregnant.size() / artCD4Pregnant.size()));
+
+            } else {
+                result.put(index + "b15f", "");
+
+            }
+
+            if (cd4AfterData.length > 0) {
+                result.put(index + "b16", StatUtils.percentile(cd4AfterData, 50));
+
+            } else {
+                result.put(index + "b16", "");
+
+            }
+
+            if (cd4AfterDataPregnant.length > 0) {
+                result.put(index + "b16f", StatUtils.percentile(cd4AfterDataPregnant, 50));
+
+            } else {
+                result.put(index + "b16f", "");
+
+            }
         }
         return result;
     }
@@ -1646,21 +1687,20 @@ public class Helper {
         return result;
     }
 
-    public static Map<String, List<Integer>> getLost(LocalDate end, Map<Integer, List<Data>> visits) {
+    public static Map<String, List<Integer>> getLost(LocalDate end, Map<Integer, List<Data>> visits, Collection deadOrStopped) {
         Map<String, List<Integer>> result = new HashMap<>();
         List<Integer> lost = new ArrayList<>();
         List<Integer> lost2Followup = new ArrayList<>();
-        for (Map.Entry<Integer, List<Data>> c : visits.entrySet()) {
+        for (Map.Entry<Integer, List<Data>> c : subtract(visits, deadOrStopped).entrySet()) {
             Data maxVisit = c.getValue().stream().max(Comparator.comparing(Data::getValue)).get();
-
+            Integer patient = c.getKey();
             LocalDate start = StubDate.dateOf(maxVisit.getValue());
-
-            if (start.compareTo(end) > 0) {
+            if (start.compareTo(end) < 0) {
                 int days = Days.daysBetween(start, end).getDays();
                 if (days >= 7 && days < 90) {
-                    lost.add(c.getKey());
+                    lost.add(patient);
                 } else if (days >= 90) {
-                    lost2Followup.add(c.getKey());
+                    lost2Followup.add(patient);
                 }
             }
         }

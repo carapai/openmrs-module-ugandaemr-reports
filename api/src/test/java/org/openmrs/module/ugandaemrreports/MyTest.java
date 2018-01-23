@@ -24,8 +24,8 @@ import static org.openmrs.module.ugandaemrreports.reports.Predicates.*;
  * Created by carapai on 30/09/2017.
  */
 public class MyTest {
-    Date startDate = DateUtil.parseYmd("2007-01-01");
-    Date lastDate = DateUtil.parseYmd("2007-03-31");
+    Date startDate = DateUtil.parseYmd("2017-01-01");
+    Date lastDate = DateUtil.parseYmd("2017-03-31");
 
     @Test
     public void testSummarizeObs() throws IOException, ParseException, SQLException, ClassNotFoundException {
@@ -240,27 +240,19 @@ public class MyTest {
         List<SummarizedObs> dateObsBe4Q = getSummarizedObs(connection, "value_datetime", dateQueryB4Q);
         List<SummarizedObs> dead = getSummarizedObs(connection, "value_death", "yq <= " + quarter);
 
-        List<SummarizedObs> all = joinSummarizedObs(dateObsBe4Q,dead);
+        List<SummarizedObs> all = joinSummarizedObs(dateObsBe4Q, dead);
         LocalDate date = StubDate.dateOf(startDate);
 
-        List<LocalDate> q1 = Periods.subtractQuarters(date, 2);
-        Map<String, Object> data = get1061BCohorts(lastDate, q1, all, connection);
-        /*Set<Integer> concepts = new HashSet<>(Arrays.asList(5096, 99071, 99072, 99603, 99160, 90206, 90306, 99165, 90211, 5240, 90209, 99132, 99084, 99085, 5497, 730));
-        Set<Integer> patients = new HashSet<>(Arrays.asList(193));
-        Map<String, Set<Integer>> p = new HashMap<>();
-        p.put("Started", patients);
-        Set<Integer> encounterTypes = new HashSet<>(Arrays.asList(8, 9));
-        Connection connection = testSqlConnection();
-        CohortTracker cohortTracker = new CohortTracker();
-        cohortTracker.setConnection(connection);
-        cohortTracker.setConcepts(concepts);
-        cohortTracker.setEndDate(DateUtil.parseYmd("2017-03-31"));
-        cohortTracker.setPatients(p);
-        cohortTracker.setEncounterTypes(encounterTypes);
-        Map<String, List<Data>> data = cohortTracker.execute();*/
-        /*List<SummarizedObs> encounters = getSummarizedObs(connection, encounterSummary());
-        List<SummarizedObs> allSummaryObs = getAllSummaryObservations(connection, encounters, startDate);
-        makeCohort(allSummaryObs, startDate, 2);*/
+        List<LocalDate> allQuarters = Arrays.asList(
+                Periods.subtractQuarters(date, 2).get(1),
+                Periods.subtractQuarters(date, 4).get(1),
+                Periods.subtractQuarters(date, 8).get(1),
+                Periods.subtractQuarters(date, 12).get(1),
+                Periods.subtractQuarters(date, 16).get(1),
+                Periods.subtractQuarters(date, 20).get(1),
+                Periods.subtractQuarters(date, 24).get(1)
+        );
+        Map<String, Object> data = get1061BCohorts(lastDate, allQuarters, all, connection);
     }
 
 }
