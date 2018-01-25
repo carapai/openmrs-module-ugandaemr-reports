@@ -28,20 +28,6 @@ public class SummarizedObs {
     public SummarizedObs() {
     }
 
-    public SummarizedObs(Integer encounterType, Integer concept, String val, Integer y, Integer m, Integer q, Integer ym, Integer yq, List<Data> ageGender, Integer total) {
-        this.encounterType = encounterType;
-        this.concept = concept;
-        this.val = val;
-        this.y = y;
-        this.q = q;
-        this.m = m;
-        this.ym = ym;
-        this.yq = yq;
-        this.ageGender = ageGender;
-        this.total = total;
-    }
-
-
     public Integer getEncounterType() {
         return encounterType;
     }
@@ -121,26 +107,5 @@ public class SummarizedObs {
     public void setTotal(Integer total) {
         this.total = total;
     }
-
-    /*public List<Data> getData() {
-        List<Data> data = new ArrayList<>();
-        for (String ageGender : Splitter.on(",").splitToList(getVals())) {
-            List<String> splitter = Splitter.on(":").splitToList(ageGender);
-            if (splitter.size() == 7) {
-                Integer patientId = Integer.valueOf(splitter.get(0));
-                Integer encounterId = Integer.valueOf(splitter.get(1));
-                String gender = splitter.get(2);
-                Integer age = Integer.valueOf(splitter.get(3));
-                String concept = splitter.get(4);
-                String value = splitter.get(5);
-                Integer voided = Integer.valueOf(splitter.get(6));
-                if (voided == 0) {
-                    data.add(new Data(patientId, encounterId, gender, age, concept, value, voided));
-                }
-            }
-        }
-        return data;
-    }
-    */
 
 }

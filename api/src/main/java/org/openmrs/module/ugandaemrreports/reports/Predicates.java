@@ -1,12 +1,11 @@
 package org.openmrs.module.ugandaemrreports.reports;
 
-import org.omg.CORBA.PUBLIC_MEMBER;
 import org.openmrs.module.ugandaemrreports.common.Data;
-import org.openmrs.module.ugandaemrreports.common.SummarizedEncounter;
 import org.openmrs.module.ugandaemrreports.common.SummarizedObs;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 
@@ -20,33 +19,21 @@ public class Predicates {
         return p -> p.getYq().compareTo(quarter) < 0;
     }
 
-    public static Predicate<SummarizedEncounter> be4EQ(Integer quarter) {
-        return p -> p.getYq().compareTo(quarter) < 0;
-    }
 
     public static Predicate<SummarizedObs> onOrBe4Q(Integer quarter) {
         return p -> p.getYq().compareTo(quarter) <= 0;
     }
 
-    public static Predicate<SummarizedEncounter> onOrBe4Q1(Integer quarter) {
-        return p -> p.getYq().compareTo(quarter) <= 0;
-    }
 
     public static Predicate<SummarizedObs> inTheQ(Integer quarter) {
         return p -> Objects.equals(p.getYq(), quarter);
     }
 
-    public static Predicate<SummarizedEncounter> inTheEQ(Integer quarter) {
-        return p -> Objects.equals(p.getYq(), quarter);
-    }
 
     public static Predicate<SummarizedObs> onOrAfterQ(Integer quarter) {
         return p -> p.getYq().compareTo(quarter) >= 0;
     }
 
-    public static Predicate<SummarizedEncounter> onOrAfterQ1(Integer quarter) {
-        return p -> p.getYq().compareTo(quarter) >= 0;
-    }
 
     public static Predicate<SummarizedObs> afterQ(Integer quarter) {
         return p -> p.getYq().compareTo(quarter) > 0;
@@ -73,10 +60,6 @@ public class Predicates {
     }
 
     public static Predicate<SummarizedObs> hasEncounterType(Integer... encounterTypes) {
-        return p -> Arrays.asList(encounterTypes).contains(p.getEncounterType());
-    }
-
-    public static Predicate<SummarizedEncounter> hasEncounterType2(Integer... encounterTypes) {
         return p -> Arrays.asList(encounterTypes).contains(p.getEncounterType());
     }
 
@@ -124,14 +107,15 @@ public class Predicates {
         }
         return p;
     }
-    @SafeVarargs
-    public static Predicate<SummarizedEncounter> and2(Predicate<SummarizedEncounter>... predicates) {
-        Predicate<SummarizedEncounter> p = predicates[0];
-        for (int i = 1; i < predicates.length; i++) {
-            p = p.and(predicates[i]);
+
+    public static Predicate<SummarizedObs> and(List<Predicate<SummarizedObs>> predicates) {
+        Predicate<SummarizedObs> p = predicates.get(0);
+        for (int i = 1; i < predicates.size(); i++) {
+            p = p.and(predicates.get(i));
         }
         return p;
     }
+
 
     @SafeVarargs
     public static Predicate<SummarizedObs> or(Predicate<SummarizedObs>... predicates) {

@@ -30,14 +30,6 @@ public class CohortTracker {
     public CohortTracker() {
     }
 
-    public CohortTracker(Map<String, Set<Integer>> patients, Set<Integer> concepts, Set<Integer> encounterTypes, Date startDate, Date endDate) {
-        this.patients = patients;
-        this.concepts = concepts;
-        this.encounterTypes = encounterTypes;
-        this.startDate = startDate;
-        this.endDate = endDate;
-    }
-
     public Map<String, Set<Integer>> getPatients() {
         return patients;
     }

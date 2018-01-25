@@ -633,7 +633,7 @@ public class Helper {
         if (StringUtils.isNotBlank(conditions)) {
             sql += " WHERE " + conditions;
         }
-        // String sql = sql1 + " UNION ALL " + sql2 + " UNION ALL " + sql3 + " UNION ALL " + sql4 + " UNION ALL " + sql5;
+
         Statement stmt = connection.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
         stmt.setFetchSize(Integer.MIN_VALUE);
         ResultSet rs = stmt.executeQuery(sql);
@@ -654,7 +654,7 @@ public class Helper {
             List<Data> data = new ArrayList<>();
             for (String ageGender : Splitter.on(",").splitToList(rs.getString(9))) {
                 List<String> splitter = Splitter.on(":").splitToList(ageGender);
-                if (splitter.size() == 8) {
+                if (splitter.size() >= 8) {
                     Integer patientId = Integer.valueOf(splitter.get(0));
                     Integer obsId = Integer.valueOf(splitter.get(1));
                     Integer encounterId = Integer.valueOf(splitter.get(2));
@@ -675,7 +675,7 @@ public class Helper {
         return summarizedObs;
     }
 
-    public static List<SummarizedEncounter> getSummarizedEncounters(Connection connection, String conditions) throws SQLException {
+    public static List<SummarizedObs> getSummarizedEncounters(Connection connection, String conditions) throws SQLException {
 
         String sql = "SELECT encounter_type, y, m, q, ym, yq, age_gender,total FROM value_encounter";
         if (StringUtils.isNotBlank(conditions)) {
@@ -684,9 +684,9 @@ public class Helper {
         Statement stmt = connection.createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
         stmt.setFetchSize(Integer.MIN_VALUE);
         ResultSet rs = stmt.executeQuery(sql);
-        List<SummarizedEncounter> summarizedEncounters = new ArrayList<>();
+        List<SummarizedObs> summarizedEncounters = new ArrayList<>();
         while (rs.next()) {
-            SummarizedEncounter encounter = new SummarizedEncounter();
+            SummarizedObs encounter = new SummarizedObs();
             encounter.setEncounterType(rs.getInt(1));
             encounter.setY(rs.getInt(2));
             encounter.setM(rs.getInt(3));
@@ -720,19 +720,19 @@ public class Helper {
     }
 
     public static void summarizeObs(Connection connection, String date) throws SQLException {
-//        createValueCodedTable(connection);
-//        createValueDatetimeTable(connection);
-//        createValueDeathTable(connection);
-//        createValueEncounterTable(connection);
-//        createValueNumericTable(connection);
-//        createValueTextTable(connection);
+        createValueCodedTable(connection);
+        createValueDatetimeTable(connection);
+        createValueDeathTable(connection);
+        createValueEncounterTable(connection);
+        createValueNumericTable(connection);
+        createValueTextTable(connection);
         executeQuery("SET @@group_concat_max_len = 10000000;", connection);
-//        executeQuery(valueCodedQuery(date), connection);
-//        executeQuery(valueNumericQuery(date), connection);
-//        executeQuery(valueDatetimeQuery(date), connection);
-//        executeQuery(valueTextQuery(date), connection);
+        executeQuery(valueCodedQuery(date), connection);
+        executeQuery(valueNumericQuery(date), connection);
+        executeQuery(valueDatetimeQuery(date), connection);
+        executeQuery(valueTextQuery(date), connection);
         executeQuery(encounterQuery(date), connection);
-//        executeQuery(deathQuery(date), connection);
+        executeQuery(deathQuery(date), connection);
     }
 
     public static Multimap<Integer, Integer> getFirstEncounters(Connection connection, String patients) throws SQLException {
@@ -1010,11 +1010,6 @@ public class Helper {
                 .collect(Collectors.toList());
     }
 
-    public static List<SummarizedEncounter> filterEncounter(List<SummarizedEncounter> summarizedObs, Predicate<SummarizedEncounter> predicate) {
-        return summarizedObs.stream()
-                .filter(predicate)
-                .collect(Collectors.toList());
-    }
 
     public static List<Data> filterData(List<Data> summarizedObs, Predicate<Data> predicate) {
         return summarizedObs.stream()
@@ -1064,16 +1059,6 @@ public class Helper {
 
     }
 
-    public static List<Data> reduceSummarizedEncounters(Collection<SummarizedEncounter> encounterCodedObs) {
-        List<Data> result = new ArrayList<>();
-
-        for (SummarizedEncounter summarizedObs : encounterCodedObs) {
-            result.addAll(summarizedObs.getAgeGender());
-        }
-
-        return result;
-
-    }
 
     public static List<Data> reduceData(Map<Integer, List<Data>> data) {
         List<Data> result = new ArrayList<>();
@@ -1173,16 +1158,9 @@ public class Helper {
         return reduceSummarizedObs(filter(summarizedObs, predicate));
     }
 
-    public static List<Data> filterAndReduce1(List<SummarizedEncounter> summarizedObs, Predicate<SummarizedEncounter> predicate) {
-        return reduceSummarizedEncounters(filterEncounter(summarizedObs, predicate));
-    }
 
     public static List<Data> filterAndReduce(List<SummarizedObs> summarizedObs, Predicate<SummarizedObs> predicate, Predicate<Data> dataPredicate) {
         return filterData(reduceSummarizedObs(filter(summarizedObs, predicate)), dataPredicate);
-    }
-
-    public static List<Data> filterAndReduce1(List<SummarizedEncounter> summarizedObs, Predicate<SummarizedEncounter> predicate, Predicate<Data> dataPredicate) {
-        return filterData(reduceSummarizedEncounters(filterEncounter(summarizedObs, predicate)), dataPredicate);
     }
 
 
@@ -1709,6 +1687,12 @@ public class Helper {
         result.put("lost2Followup", lost2Followup);
 
         return result;
+    }
+
+    public static void processDataElements(List<SummarizedObs> summarizedObs, List<DataElement> dataElements) {
+        for (DataElement dataElement : dataElements) {
+            List<SummarizedObs> filtered = filter(summarizedObs, and(new ArrayList<>(dataElement.getPredicates().values())));
+        }
     }
 
 }

@@ -45,7 +45,6 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             Date startDate = definition.getStartDate();
             Date lastDate = definition.getEndDate();
             LocalDate date = StubDate.dateOf(startDate);
-            LocalDate endDate = StubDate.dateOf(lastDate);
             String quarter = getObsPeriod2(startDate, Enums.Period.QUARTERLY);
             Integer q = Integer.valueOf(quarter);
 
@@ -62,16 +61,8 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
                     Periods.subtractQuarters(date, 24).get(1)
             );
 
-            /*List<LocalDate> q1 = ;
-            List<LocalDate> q2 = Periods.subtractQuarters(date, 4);
-            List<LocalDate> q3 = Periods.subtractQuarters(date, 8);
-            List<LocalDate> q4 = Periods.subtractQuarters(date, 12);
-            List<LocalDate> q5 = Periods.subtractQuarters(date, 16);
-            List<LocalDate> q6 = Periods.subtractQuarters(date, 20);
-            List<LocalDate> q7 = Periods.subtractQuarters(date, 24);*/
-
-
-            String encounterQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter, "encounter_type IN(8,9)");
+            String encounterSummaryQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter, "encounter_type = 8");
+            String encounterQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter, "encounter_type = 9");
 
             String numericConcepts1 = "concept IN(99604,99604)";
             String dateConcepts1 = "concept IN(99161,90299)";
@@ -93,8 +84,8 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             String codedQueryQ = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter,
                     codedConcepts2, "encounter_type IN(8,9)");
 
-            List<SummarizedEncounter> encounters = getSummarizedEncounters(connection, encounterQuery);
-
+            List<SummarizedObs> artEncounters = getSummarizedEncounters(connection, encounterQuery);
+            List<SummarizedObs> summaryEncounters = getSummarizedEncounters(connection, encounterSummaryQuery);
             List<SummarizedObs> numericObsBe4Q = getSummarizedObs(connection, "value_numeric", numericQueryB4Q);
             List<SummarizedObs> dateObsBe4Q = getSummarizedObs(connection, "value_datetime", dateQueryB4Q);
             List<SummarizedObs> numericObsQ = getSummarizedObs(connection, "value_numeric", numericQueryQ);
@@ -102,47 +93,38 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             List<SummarizedObs> codedObsQ = getSummarizedObs(connection, "value_coded", codedQueryQ);
             List<SummarizedObs> deadPeople = getSummarizedObs(connection, "value_death", "yq <= " + quarter);
 
-            List<SummarizedEncounter> summaryEncounters = filterEncounter(encounters, hasEncounterType2(summaryEncounterType));
-            List<SummarizedEncounter> artEncounters = filterEncounter(encounters, hasEncounterType2(encounterEncounterType));
-
-
             List<SummarizedObs> transferInB4Art = filter(codedObsQ, hasConcepts(99110));
             List<SummarizedObs> transferInOnArt = filter(dateObsQ, hasConcepts(99160));
             List<SummarizedObs> startedArtOnOrB4Q = filter(dateObsBe4Q, hasConcepts(99161));
             List<SummarizedObs> artRegimen = filter(codedObsQ, hasConcepts(90315));
-
+            List<SummarizedObs> pregnantOrLactatingAtArtStart = filter(codedObsQ, hasConcepts(99072, 99603));
+            List<SummarizedObs> allTransferIn = joinSummarizedObs(transferInB4Art, transferInOnArt);
+            List<SummarizedObs> startedArtB4Q = filter(startedArtOnOrB4Q, be4Q(q));
+            List<SummarizedObs> summaryBe4Q = filter(summaryEncounters, be4Q(q));
+            List<SummarizedObs> summaryInTheQ = filter(summaryEncounters, inTheQ(q));
+            List<SummarizedObs> artInTheQ = filter(artEncounters, inTheQ(q));
+            List<SummarizedObs> tbThisQuarter = filter(codedObsQ, hasConcepts(90216));
 
             List<Data> startedArtThisQ = filterAndReduce(startedArtOnOrB4Q, inTheQ(q));
-            List<SummarizedObs> startedArtB4Q = filter(startedArtOnOrB4Q, be4Q(q));
-
-            List<SummarizedObs> pregnantOrLactatingAtArtStart = filter(codedObsQ, hasConcepts(99072, 99603));
             List<Data> inhThisQ = filterAndReduce(numericObsBe4Q, and(inTheQ(q), hasConcepts(99604, 99605)));
             List<Data> inhBe4Q = filterAndReduce(numericObsBe4Q, and(be4Q(q), hasConcepts(99604, 99605)));
             List<Data> pregnantThisQuarter = filterAndReduce(codedObsQ, and(hasConcepts(90041, 90012), hasVal("90003", "1065")));
             List<Data> entryPoint = filterAndReduce(codedObsQ, and(hasConcepts(90200), hasVal("90012")));
             List<Data> goodAdherence = filterAndReduce(codedObsQ, and(hasConcepts(90221), hasVal("90156")));
-
-            List<SummarizedObs> allTransferIn = joinSummarizedObs(transferInB4Art, transferInOnArt);
             List<Data> transferIn = reduceSummarizedObs(allTransferIn);
-            List<SummarizedEncounter> summaryBe4Q = filterEncounter(summaryEncounters, be4EQ(q));
-            List<SummarizedEncounter> summaryInTheQ = filterEncounter(summaryEncounters, inTheEQ(q));
-            List<SummarizedEncounter> artInTheQ = filterEncounter(artEncounters, inTheEQ(q));
-
-            List<Data> summaryPageInQuarter = reduceSummarizedEncounters(summaryInTheQ);
-
+            List<Data> summaryPageInQuarter = reduceSummarizedObs(summaryInTheQ);
             List<Data> withoutTransferIn = subtract(summaryPageInQuarter, transferIn);
             List<Data> withTransferIn = intersection(summaryPageInQuarter, transferIn);
             List<Data> mothers = intersection(withoutTransferIn, entryPoint);
-            List<Data> cumulativeEnrolled = combine(reduceSummarizedEncounters(summaryBe4Q), withoutTransferIn);
+            List<Data> cumulativeEnrolled = combine(reduceSummarizedObs(summaryBe4Q), withoutTransferIn);
             List<Data> startedInh = intersection(withoutTransferIn, subtract(inhThisQ, inhBe4Q));
+
             Multimap<Integer, Integer> patientsFirstEncounters = getFirstEncounters(connection, Joiner.on(",").join(reduceData(withoutTransferIn)));
             Collection<Integer> firstEncounter = patientsFirstEncounters.get(encounterEncounterType);
 
             List<Data> pregnantFirstEncounter = filterData(pregnantThisQuarter, hasEncounter(firstEncounter));
             List<Data> allPregnant = combine(mothers, pregnantFirstEncounter);
-
             List<Data> cptThisQuarter = filterAndReduce(numericObsQ, hasConcepts(99037, 99033));
-            List<SummarizedObs> tbThisQuarter = filter(codedObsQ, hasConcepts(90216));
             List<Data> tbDiagnosedThisQuarter = filterAndReduce(tbThisQuarter, hasVal("90078"));
             List<Data> startedTbThisQuarter = filterAndReduce(dateObsQ, hasConcepts(90217));
             List<Data> assessed4MalNumeric = filterAndReduce(numericObsQ, hasConcepts(90236, 5090));
@@ -151,7 +133,7 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             List<Data> malnutrition = filterAndReduce(numericObsQ, and(hasConcepts(68), hasVal("99271", "99272", "99273")));
             List<Data> eligibleAndReady = filterAndReduce(dateObsQ, hasConcepts(90299));
             List<Data> artBasedOnCD4 = filterAndReduce(numericObsQ, hasConcepts(99082));
-            List<Data> onPreArt = subtract(reduceSummarizedEncounters(artInTheQ), reduceSummarizedObs(startedArtOnOrB4Q));
+            List<Data> onPreArt = subtract(reduceSummarizedObs(artInTheQ), reduceSummarizedObs(startedArtOnOrB4Q));
             List<Data> onPreArtAndCpt = intersection(cptThisQuarter, onPreArt);
             List<Data> onPreArtAndTb = intersection(reduceSummarizedObs(tbThisQuarter), onPreArt);
             List<Data> onPreArtAndDiagnosedTb = intersection(tbDiagnosedThisQuarter, onPreArt);
@@ -161,29 +143,36 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             List<Data> onPreArtEligibleNotStarted = intersection(eligibleAndReady, onPreArt);
             List<Data> startedArtBasedOnCD4 = intersection(startedArtThisQ, artBasedOnCD4);
 
-            String[] allFirst = {"99005", "99040", "99015", "99016", "99041", "90002", "99039", "99143", "99042"};
-            String[] allSecond = {"99044", "99043", "99284", "99286", "99887", "99007", "99008", "99283", "99144", "99888"};
-            String[] allFirstAndSecondChildren = {"99006", "99885", "99884"};
-            String[] allSecondAndFirstChildren = {"99046"};
-            String[] firstAndSecondChildren = {"163017"};
+            String[] allFirst = {
+                    "99005", "99040", "99015", "99016", "99041", "90002", "99039", "99143", "99042"
+            };
+            String[] allSecond = {
+                    "99044", "99043", "99284", "99286", "99887", "99007", "99008", "99283", "99144", "99888"
+            };
+            String[] allFirstAndSecondChildren = {
+                    "99006", "99885", "99884"
+            };
+            String[] allSecondAndFirstChildren = {
+                    "99046"
+            };
+            String[] firstAndSecondChildren = {
+                    "163017"
+            };
+
+            String[] third = {
+                    "162987", "162986"
+            };
 
             List<Data> allFirstLine = filterAndReduce(artRegimen, hasVal(allFirst));
             List<Data> firstLineAdult = filterData(filterAndReduce(artRegimen, hasVal(allFirstAndSecondChildren)), afterAge(12));
             List<Data> firstLineChildren1 = filterData(filterAndReduce(artRegimen, hasVal(allSecondAndFirstChildren)), beforeAge(13));
-
-
-            List<Data> firstLineChild = filterData(filterAndReduce(artRegimen, hasVal("163017", "99040", "99885",
-                    "99884", "99005", "99006", "99015", "99016", "99046", "99041")), and1(beforeAge(13)));
-
             List<Data> allSecondLine = filterAndReduce(artRegimen, hasVal(allSecond));
             List<Data> secondLineAdult = filterData(filterAndReduce(artRegimen, hasVal(allSecondAndFirstChildren)), afterAge(12));
             List<Data> secondLineChildren1 = filterData(filterAndReduce(artRegimen, hasVal(allFirstAndSecondChildren)), beforeAge(13));
-
-            List<Data> thirdLine = filterAndReduce(artRegimen, hasVal("162987", "162986"));
-
+            List<Data> thirdLine = filterAndReduce(artRegimen, hasVal(third));
             List<Data> hadArtRegimen = reduceSummarizedObs(artRegimen);
 
-            Map<String, Long> enrolledB4Q = summarize(reduceSummarizedEncounters(summaryBe4Q), get106, zeros106);
+            Map<String, Long> enrolledB4Q = summarize(reduceSummarizedObs(summaryBe4Q), get106, zeros106);
             Map<String, Long> enrolledInTheQ = summarize(withoutTransferIn, get106, zeros106);
             Map<String, Long> pregnantAndLactating = summarize(allPregnant, pregnant, zerosFemales);
             Map<String, Long> inhInQ = summarize(startedInh, get106, zeros106);
@@ -191,7 +180,6 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             Map<String, Long> transferIns = summarize(withTransferIn, get106, zeros106);
             Map<String, Long> preArt = summarize(onPreArt, pre, zerosPreArt);
             Map<String, Long> preArtWithCPT = summarize(onPreArtAndCpt, pre, zerosPreArt);
-
             Map<String, Long> cumulativeOnArt = summarize(reduceSummarizedObs(startedArtB4Q), get106, zeros106);
             Map<String, Long> startedArt = summarize(startedArtThisQ, get106, zeros106);
             Map<String, Long> startedArtCD4 = summarize(startedArtBasedOnCD4, get106, zeros106);
