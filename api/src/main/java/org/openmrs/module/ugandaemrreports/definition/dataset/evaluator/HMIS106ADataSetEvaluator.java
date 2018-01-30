@@ -1,10 +1,7 @@
 package org.openmrs.module.ugandaemrreports.definition.dataset.evaluator;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.ListUtils;
 import org.joda.time.LocalDate;
 import org.openmrs.annotation.Handler;
 import org.openmrs.module.reporting.dataset.DataSetColumn;
@@ -18,11 +15,9 @@ import org.openmrs.module.ugandaemrreports.definition.dataset.definition.HMIS106
 
 import java.sql.Connection;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.openmrs.module.ugandaemrreports.reports.Helper.*;
 import static org.openmrs.module.ugandaemrreports.reports.Predicates.*;
-import static org.openmrs.module.ugandaemrreports.reports.Predicates.hasAnswers;
 
 /**
  */
@@ -51,6 +46,8 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             Integer summaryEncounterType = 8;
             Integer encounterEncounterType = 9;
 
+            String allEncounters = Joiner.on("").join(Arrays.asList(summaryEncounterType, encounterEncounterType));
+
             List<LocalDate> allQuarters = Arrays.asList(
                     Periods.subtractQuarters(date, 2).get(1),
                     Periods.subtractQuarters(date, 4).get(1),
@@ -61,8 +58,10 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
                     Periods.subtractQuarters(date, 24).get(1)
             );
 
-            String encounterSummaryQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter, "encounter_type = 8");
-            String encounterQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter, "encounter_type = 9");
+            String encounterSummaryQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter,
+                    "encounter_type = " + String.valueOf(summaryEncounterType));
+            String encounterQuery = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter,
+                    "encounter_type = " + String.valueOf(encounterEncounterType));
 
             String numericConcepts1 = "concept IN(99604,99604)";
             String dateConcepts1 = "concept IN(99161,90299)";
@@ -74,15 +73,15 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             String numericQueryB4Q = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter,
                     numericConcepts1, "encounter_type IN(8,9)");
             String dateQueryB4Q = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter,
-                    dateConcepts1, "encounter_type IN(8,9)");
+                    dateConcepts1, String.format("encounter_type IN(%s)", allEncounters));
 
             String numericQueryQ = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter,
-                    numericConcepts2, "encounter_type IN(8,9)");
+                    numericConcepts2, String.format("encounter_type IN(%s)", allEncounters));
 
             String dateQueryQ = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter,
-                    dateConcepts2, "encounter_type IN(8,9)");
+                    dateConcepts2, String.format("encounter_type IN(%s)", allEncounters));
             String codedQueryQ = joinQuery(Enums.UgandaEMRJoiner.AND, "yq = " + quarter,
-                    codedConcepts2, "encounter_type IN(8,9)");
+                    codedConcepts2, String.format("encounter_type IN(%s)", allEncounters));
 
             List<SummarizedObs> artEncounters = getSummarizedEncounters(connection, encounterQuery);
             List<SummarizedObs> summaryEncounters = getSummarizedEncounters(connection, encounterSummaryQuery);

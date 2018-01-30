@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.stat.StatUtils;
 import org.joda.time.Days;
 import org.joda.time.LocalDate;
+import org.openmrs.GlobalProperty;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.reporting.common.DateUtil;
 import org.openmrs.module.reporting.dataset.DataSetColumn;
@@ -1693,6 +1694,19 @@ public class Helper {
         for (DataElement dataElement : dataElements) {
             List<SummarizedObs> filtered = filter(summarizedObs, and(new ArrayList<>(dataElement.getPredicates().values())));
         }
+    }
+
+    public static GlobalProperty setGlobalProperty(String property, String propertyValue) {
+        GlobalProperty globalProperty = new GlobalProperty();
+
+        globalProperty.setProperty(property);
+        globalProperty.setPropertyValue(propertyValue);
+
+        return Context.getAdministrationService().saveGlobalProperty(globalProperty);
+    }
+
+    public static String getGlobalProperty(String property) {
+        return Context.getAdministrationService().getGlobalProperty(property);
     }
 
 }
