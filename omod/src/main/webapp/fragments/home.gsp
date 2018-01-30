@@ -1,1 +1,1 @@
-This is yet to work
+Summarizing of observation is complete

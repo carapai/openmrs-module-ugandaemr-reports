@@ -12,6 +12,8 @@ import org.openmrs.module.reporting.evaluation.EvaluationContext;
 import org.openmrs.module.reporting.evaluation.EvaluationException;
 import org.openmrs.module.ugandaemrreports.common.*;
 import org.openmrs.module.ugandaemrreports.definition.dataset.definition.HMIS106ADataSetDefinition;
+import org.openmrs.module.ugandaemrreports.metadata.HIVMetadata;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.sql.Connection;
 import java.util.*;
@@ -23,6 +25,9 @@ import static org.openmrs.module.ugandaemrreports.reports.Predicates.*;
  */
 @Handler(supports = {HMIS106ADataSetDefinition.class})
 public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
+
+    @Autowired
+    HIVMetadata hivMetadata;
 
     @Override
     public MapDataSet evaluate(DataSetDefinition dataSetDefinition, EvaluationContext evaluationContext) throws EvaluationException {
@@ -43,10 +48,10 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             String quarter = getObsPeriod2(startDate, Enums.Period.QUARTERLY);
             Integer q = Integer.valueOf(quarter);
 
-            Integer summaryEncounterType = 8;
-            Integer encounterEncounterType = 9;
+            Integer summaryEncounterType = hivMetadata.getARTSummaryEncounter().getEncounterTypeId();
+            Integer encounterEncounterType = hivMetadata.getARTEncounterEncounterType().getEncounterTypeId();
 
-            String allEncounters = Joiner.on("").join(Arrays.asList(summaryEncounterType, encounterEncounterType));
+            String allEncounters = Joiner.on(",").join(Arrays.asList(summaryEncounterType, encounterEncounterType));
 
             List<LocalDate> allQuarters = Arrays.asList(
                     Periods.subtractQuarters(date, 2).get(1),
@@ -71,7 +76,7 @@ public class HMIS106ADataSetEvaluator implements DataSetEvaluator {
             String codedConcepts2 = "concept IN(99110,90315,99072,99603,90041,90012,90200,90221,90216,99030,68,460)";
 
             String numericQueryB4Q = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter,
-                    numericConcepts1, "encounter_type IN(8,9)");
+                    numericConcepts1, String.format("encounter_type IN(%s)", allEncounters));
             String dateQueryB4Q = joinQuery(Enums.UgandaEMRJoiner.AND, "yq <= " + quarter,
                     dateConcepts1, String.format("encounter_type IN(%s)", allEncounters));
 

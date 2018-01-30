@@ -1,5 +1,6 @@
 package org.openmrs.module.ugandaemrreports.reports;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.*;
 import org.apache.commons.collections.CollectionUtils;
