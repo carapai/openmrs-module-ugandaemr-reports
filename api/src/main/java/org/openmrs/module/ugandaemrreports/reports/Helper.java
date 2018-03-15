@@ -369,7 +369,7 @@ public class Helper {
                 .build();
     }
 
-    private static Connection getDatabaseConnection(Properties props) throws ClassNotFoundException, SQLException {
+    public static Connection getDatabaseConnection(Properties props) throws ClassNotFoundException, SQLException {
 
         String driverClassName = props.getProperty("driver.class");
         String driverURL = props.getProperty("driver.url");
